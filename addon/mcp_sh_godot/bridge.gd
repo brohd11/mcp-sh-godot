@@ -1,18 +1,18 @@
 @tool
 extends Node
-## Loopback TCP listener speaking the agent-shell host protocol, so godot-shell can run
-## the editor's commands. See github.com/brohd11/agent-shell (host/protocol.go).
+## Loopback TCP listener speaking the mcp-sh host protocol, so mcp-sh-godot can run
+## the editor's commands. See github.com/brohd11/mcp-sh (host/protocol.go).
 ##
 ## Newline-delimited JSON, one request per connection:
 ##   hello:  -> {name, version, commands: [{name, summary}]}
 ##   invoke: {cmd, args, stdin} -> {stdout, stderr, exit_code}
 ##   help:   {cmd} -> {stdout}
 ## Errors are {"id", "error"}. The shell itself (pipes, loops, grep/jq...) runs in the
-## godot-shell binary. The editor only lists its top-level commands and runs one at a time
+## mcp-sh-godot binary. The editor only lists its top-level commands and runs one at a time
 ## with exact args and piped stdin.
 
-const Runner = preload("res://addons/godot_shell/runner.gd")
-const PLUGIN_CFG = "res://addons/godot_shell/plugin.cfg"
+const Runner = preload("res://addons/mcp_sh_godot/runner.gd")
+const PLUGIN_CFG = "res://addons/mcp_sh_godot/plugin.cfg"
 
 const _READ_CHUNK := 65536
 

@@ -1,10 +1,10 @@
 @tool
 extends EditorPlugin
-## Serves the editor's commands to godot-shell over loopback TCP while enabled.
+## Serves the editor's commands to mcp-sh-godot over loopback TCP while enabled.
 
-const Bridge = preload("res://addons/godot_shell/bridge.gd")
-const BridgeConfig = preload("res://addons/godot_shell/bridge_config.gd")
-const MENU_RESTART = "Restart godot-shell Bridge"
+const Bridge = preload("res://addons/mcp_sh_godot/bridge.gd")
+const BridgeConfig = preload("res://addons/mcp_sh_godot/bridge_config.gd")
+const MENU_RESTART = "Restart mcp-sh-godot Bridge"
 
 var _bridge:Bridge
 
@@ -27,16 +27,16 @@ func restart(config = null) -> void:
 	if config == null:
 		config = BridgeConfig.load_config()
 	_bridge = Bridge.new(config)
-	_bridge.name = "GodotShellBridge"
+	_bridge.name = "McpShGodotBridge"
 	add_child(_bridge)
 	var err = _bridge.start(config.port, config.token)
 	if err != OK:
-		push_error("godot-shell: could not listen on 127.0.0.1:%s (%s). Is another editor or bridge using the port?" % [config.port, error_string(err)])
+		push_error("mcp-sh-godot: could not listen on 127.0.0.1:%s (%s). Is another editor or bridge using the port?" % [config.port, error_string(err)])
 		_stop()
 		return
 	var suffix = " (token required)" if config.token != "" else ""
 	var sources = "" if config.sources.is_empty() else ", config: " + ", ".join(config.sources)
-	print("godot-shell bridge %s listening on 127.0.0.1:%s%s%s" % [Bridge.addon_version(), config.port, suffix, sources])
+	print("mcp-sh-godot bridge %s listening on 127.0.0.1:%s%s%s" % [Bridge.addon_version(), config.port, suffix, sources])
 
 
 func _stop() -> void:

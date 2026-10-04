@@ -1,16 +1,16 @@
 @tool
 extends RefCounted
 ## The bridge's config: built-in defaults, then the user file, then the project file.
-##   user:    $AGENT_SHELL_CONFIG_DIR/godot/bridge.json (default ~/.agent-shell/godot/bridge.json)
-##   project: res://.agent-shell/godot/bridge.json
-## These sit beside godot-shell's own config. Scalars replace earlier layers. `commandDirs`
+##   user:    $MCP_SH_CONFIG_DIR/godot/bridge.json (default ~/.mcp-sh/godot/bridge.json)
+##   project: res://.mcp-sh/godot/bridge.json
+## These sit beside mcp-sh-godot's own config. Scalars replace earlier layers. `commandDirs`
 ## and `exclude` add to them. `commands` merges by name.
 
 const FILE_NAME = "bridge.json"
 
-## Not offered to agent-shell. Each invoke runs in a fresh context, and the agent's bash
+## Not offered to mcp-sh. Each invoke runs in a fresh context, and the agent's bash
 ## already provides shell control, so gdsh's session builtins would be no-ops or
-## duplicates. grep/head/tail duplicate agent-shell's regex-capable builtins. os and term
+## duplicates. grep/head/tail duplicate mcp-sh's regex-capable builtins. os and term
 ## would hand the agent the OS directly; terminal/clear/hide_log are human UI. help and
 ## hidden only re-list other commands.
 ## Note this is hygiene, not a security boundary: expr, script call and friends can
@@ -45,19 +45,19 @@ var sources:PackedStringArray = []
 
 static func load_config():
 	var cfg = new()
-	var env_port = OS.get_environment("GODOT_SHELL_PORT")
+	var env_port = OS.get_environment("MCP_SH_GODOT_PORT")
 	if env_port.is_valid_int():
 		cfg.port = env_port.to_int()
-	cfg.token = OS.get_environment("GODOT_SHELL_TOKEN")
+	cfg.token = OS.get_environment("MCP_SH_GODOT_TOKEN")
 	for path in [user_path(), project_path()]:
 		cfg._apply_file(path)
 	return cfg
 
 
 static func config_dir() -> String:
-	var dir = OS.get_environment("AGENT_SHELL_CONFIG_DIR")
+	var dir = OS.get_environment("MCP_SH_CONFIG_DIR")
 	if dir.is_empty():
-		dir = _home().path_join(".agent-shell")
+		dir = _home().path_join(".mcp-sh")
 	return dir
 
 
@@ -66,7 +66,7 @@ static func user_path() -> String:
 
 
 static func project_path() -> String:
-	return "res://.agent-shell/godot".path_join(FILE_NAME)
+	return "res://.mcp-sh/godot".path_join(FILE_NAME)
 
 
 func is_excluded(name:String) -> bool:
@@ -78,13 +78,13 @@ func _apply_file(path:String) -> void:
 		return
 	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not data is Dictionary:
-		push_warning("godot-shell: %s is not a JSON object, ignored" % path)
+		push_warning("mcp-sh-godot: %s is not a JSON object, ignored" % path)
 		return
 	sources.append(path)
 	var base = path.get_base_dir()
 	for key in data:
 		if not key in KEYS:
-			push_warning("godot-shell: %s: unknown key '%s'" % [path, key])
+			push_warning("mcp-sh-godot: %s: unknown key '%s'" % [path, key])
 	if data.has("port"):
 		port = int(data.port)
 	if data.has("token"):
@@ -108,7 +108,7 @@ func _apply_file(path:String) -> void:
 
 
 ## res:// and absolute paths stay as they are. ~/ is the home folder. Any other path is
-## relative to the config file's folder, as in godot-shell's config.
+## relative to the config file's folder, as in mcp-sh-godot's config.
 static func _resolve(path:String, base:String) -> String:
 	if path.begins_with("res://") or path.begins_with("user://") or path.is_absolute_path():
 		return path

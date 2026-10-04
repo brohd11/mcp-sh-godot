@@ -1,6 +1,6 @@
-# Install godot-shell into %LOCALAPPDATA%\bin.
+# Install mcp-sh-godot into %LOCALAPPDATA%\bin.
 #
-#   irm https://raw.githubusercontent.com/brohd11/godot-shell/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.ps1 | iex
 #
 # Env overrides (set them before the pipeline):
 #   $env:BIN_DIR = 'C:\tools'    install target   (default: %LOCALAPPDATA%\bin)
@@ -13,8 +13,8 @@
 # Update the template, then run the workspace's render-go.sh.
 
 # ---- config ----
-$Repo       = 'brohd11/godot-shell'
-$Binary     = 'godot-shell'
+$Repo       = 'brohd11/mcp-sh-godot'
+$Binary     = 'mcp-sh-godot'
 $ArchiveExt = 'zip'                                # zip | tar.gz
 $Supported  = 'windows-amd64'
 

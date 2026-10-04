@@ -12,7 +12,7 @@
 # just reports "dev". Verify after any change with
 #   make && ./build/$(go env GOOS)-$(go env GOARCH)/<APP_NAME> --version
 
-APP_NAME    = godot-shell
+APP_NAME    = mcp-sh-godot
 VERSION_PKG = main
 PLATFORMS   = darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64
 # ---- end config ----

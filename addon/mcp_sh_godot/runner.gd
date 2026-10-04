@@ -54,7 +54,7 @@ func editor_console() -> GDScript:
 	return script if script != null and script.instance_valid() else null
 
 
-## Every command offered to agent-shell, by name: {name: scope data}.
+## Every command offered to mcp-sh, by name: {name: scope data}.
 func get_scopes() -> Dictionary:
 	var scopes := {}
 	var ec = editor_console()
@@ -106,9 +106,9 @@ func run(line:String, stdin:String = "") -> Dictionary:
 func _new_ctx(sh:GDScript, ec:GDScript):
 	var ctx
 	if ec != null:
-		ctx = sh.Context.new_ctx("godot-shell request", ec.get_main_ctx())
+		ctx = sh.Context.new_ctx("mcp-sh-godot request", ec.get_main_ctx())
 	else:
-		ctx = sh.Context.new("godot-shell request")
+		ctx = sh.Context.new("mcp-sh-godot request")
 		ctx.scopes.merge(_get_plain_scopes(), true)
 		if _undo_session == null:
 			_undo_session = sh.Undo.Session.new()
@@ -125,7 +125,7 @@ func _get_config_scopes() -> Dictionary:
 		_config_scopes = {}
 		for dir in config.command_dirs:
 			if not DirAccess.dir_exists_absolute(dir):
-				push_warning("godot-shell: command dir not found: " + dir)
+				push_warning("mcp-sh-godot: command dir not found: " + dir)
 				continue
 			_config_scopes.merge(gdsh().Load.load_directory(dir), true)
 		for name in config.commands:

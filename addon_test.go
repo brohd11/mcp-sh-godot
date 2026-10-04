@@ -34,7 +34,7 @@ func TestAddonInstall(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("install: %d %s", code, errOut)
 	}
-	if !strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "Enable \"godot-shell\"") {
+	if !strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "Enable \"mcp-sh-godot\"") {
 		t.Fatalf("install output: %q", out)
 	}
 	dest := filepath.Join(project, addonDir)
@@ -79,7 +79,7 @@ func TestAddonForeignDir(t *testing.T) {
 	dest := filepath.Join(project, addonDir)
 	os.MkdirAll(dest, 0o755)
 	os.WriteFile(filepath.Join(dest, "plugin.cfg"), []byte("[plugin]\nname=\"other\"\nversion=\"9.9.9\"\n"), 0o644)
-	if _, errOut, code := addon(t, "v1.0.0", "install", project); code != 1 || !strings.Contains(errOut, "not the godot-shell addon") {
+	if _, errOut, code := addon(t, "v1.0.0", "install", project); code != 1 || !strings.Contains(errOut, "not the mcp-sh-godot addon") {
 		t.Fatalf("install over foreign: %d %q", code, errOut)
 	}
 	if _, errOut, code := addon(t, "v1.0.0", "remove", project); code != 1 || !strings.Contains(errOut, "not removing") {

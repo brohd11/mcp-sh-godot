@@ -1,7 +1,7 @@
 #!/bin/sh
-# Install godot-shell into ~/.local/bin.
+# Install mcp-sh-godot into ~/.local/bin.
 #
-#   curl -fsSL https://raw.githubusercontent.com/brohd11/godot-shell/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.sh | sh
 #
 # Env overrides:
 #   BIN_DIR=/usr/local/bin   install target   (default: ~/.local/bin)
@@ -14,8 +14,8 @@
 set -eu
 
 # ---- config ----
-REPO="brohd11/godot-shell"
-BINARY="godot-shell"
+REPO="brohd11/mcp-sh-godot"
+BINARY="mcp-sh-godot"
 ARCHIVE_EXT="zip"
 SUPPORTED="darwin-arm64 darwin-amd64 linux-amd64 linux-arm64"
 
