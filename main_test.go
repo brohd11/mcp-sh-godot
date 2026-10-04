@@ -26,19 +26,19 @@ func TestConfigLoads(t *testing.T) {
 }
 
 func TestEnvExpansion(t *testing.T) {
-	t.Setenv("EDITOR_CONSOLE_PORT", "")
-	t.Setenv("EDITOR_CONSOLE_TOKEN", "")
+	t.Setenv("GODOT_SHELL_PORT", "")
+	t.Setenv("GODOT_SHELL_TOKEN", "")
 	if h := load(t).Profile.Host; h.Address != "127.0.0.1:9510" || h.Token != "" {
 		t.Fatalf("defaults: %+v", h)
 	}
-	t.Setenv("EDITOR_CONSOLE_PORT", "9600")
-	t.Setenv("EDITOR_CONSOLE_TOKEN", "s3cret")
+	t.Setenv("GODOT_SHELL_PORT", "9600")
+	t.Setenv("GODOT_SHELL_TOKEN", "s3cret")
 	l := load(t)
 	if h := l.Profile.Host; h.Address != "127.0.0.1:9600" || h.Token != "s3cret" {
 		t.Fatalf("env: %+v", h)
 	}
 	// Raw keeps the reference, so `config show` never prints the secret.
-	if l.Raw.Host.Token != "${EDITOR_CONSOLE_TOKEN}" {
+	if l.Raw.Host.Token != "${GODOT_SHELL_TOKEN}" {
 		t.Fatalf("raw: %q", l.Raw.Host.Token)
 	}
 }

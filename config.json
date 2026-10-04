@@ -1,10 +1,10 @@
 {
   "title": "the live Godot editor",
-  "instructions": "Host commands are the Godot Editor Console's commands, run in the open editor exactly as if typed into its console: 'tree root | tree nodes --recursive', 'ls res://', and so on. Resource paths (res://...) and node paths are plain arguments the editor interprets; they are not files in this shell. Start with list_commands, then '<command> --help' or the help tool for subcommands and flags. Changes made through commands are real edits to the open project; prefer inspecting before modifying.",
-  "setup": "In the Godot editor, enable the editor_console addon, then run 'mcp bridge start' in its console (or once: config startup --add \"mcp bridge start\"). Set EDITOR_CONSOLE_PORT / EDITOR_CONSOLE_TOKEN if the bridge uses another port or a token.",
+  "instructions": "Host commands are gdsh commands run in the open Godot editor (the Editor Console's commands when that addon is enabled): 'tree root | tree nodes --recursive', 'ls res://', and so on. Resource paths (res://...) and node paths are plain arguments the editor interprets; they are not files in this shell. Start with list_commands, then '<command> --help' or the help tool for subcommands and flags. Changes made through commands are real edits to the open project; prefer inspecting before modifying.",
+  "setup": "In each Godot project: run 'godot-shell addon install' in the project folder, then enable the godot-shell plugin in Project Settings > Plugins. It needs gdsh (gdaddon install brohd11/godot-gdsh), and offers editor_console's commands when that addon is enabled. Bridge settings (port, token, commands) go in ~/.agent-shell/godot/bridge.json or res://.agent-shell/godot/bridge.json. Set GODOT_SHELL_PORT / GODOT_SHELL_TOKEN here if the bridge uses another port or a token.",
   "host": {
-    "address": "127.0.0.1:${EDITOR_CONSOLE_PORT:-9510}",
-    "token": "${EDITOR_CONSOLE_TOKEN}",
-    "hint": "open the editor with the editor_console addon enabled and run 'mcp bridge start' in its console"
+    "address": "127.0.0.1:${GODOT_SHELL_PORT:-9510}",
+    "token": "${GODOT_SHELL_TOKEN}",
+    "hint": "open the project in the Godot editor with the godot-shell plugin enabled (install it with 'godot-shell addon install')"
   }
 }

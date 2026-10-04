@@ -18,10 +18,11 @@ var version = "dev"
 
 func main() {
 	agentshell.Main(agentshell.Config{
-		Name:       "godot-shell",
-		App:        "godot",
-		Version:    version,
-		UpdateRepo: "brohd11/godot-shell",
-		FS:         appFS,
+		Name:        "godot-shell",
+		App:         "godot",
+		Version:     version,
+		UpdateRepo:  "brohd11/godot-shell",
+		FS:          appFS,
+		Subcommands: []agentshell.Subcommand{addonCommand(version)},
 	})
 }
