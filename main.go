@@ -24,5 +24,11 @@ func main() {
 		UpdateRepo:  "brohd11/mcp-sh-godot",
 		FS:          appFS,
 		Subcommands: []mcpsh.Subcommand{addonCommand(version)},
+		// A running game serves its own bridge on 9511 (bridge.gd RUNTIME_PORT).
+		Registrations: []mcpsh.Registration{{
+			Suffix: "-game",
+			Env:    map[string]string{"MCP_SH_GODOT_PORT": "9511"},
+			Label:  "running game",
+		}},
 	})
 }

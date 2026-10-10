@@ -13,7 +13,7 @@ mcp-sh-godot run 'tree root | tree nodes --recursive | grep -c Camera'
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.sh | sh
-mcp-sh-godot setup        # ~/.mcp-sh/godot/ + `claude mcp add -s user mcp-sh-godot -- <path>`
+mcp-sh-godot setup        # ~/.mcp-sh/godot/ + prints the claude/codex mcp add commands
 ```
 
 On Windows: `irm https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.ps1 | iex`.
@@ -46,8 +46,9 @@ aliases apply. `cd` and `pwd` are gdsh's (mcp-sh hands bash's to them), as are `
 
 ## In a running game
 
-The bridge is a node, so a game or app adds it the way the plugin does. Then add a second
-MCP entry for its port:
+The bridge is a node, so a game or app adds it the way the plugin does. Then register the
+`mcp-sh-godot-game` entry that `setup` (and `--help`) prints for each agent; it sets
+`MCP_SH_GODOT_PORT=9511`.
 
 ```gdscript
 const McpShBridge = preload("res://addons/mcp_sh_godot/bridge.gd")
@@ -56,10 +57,6 @@ func _ready():
     var bridge = McpShBridge.new()
     bridge.host = my_console.create_host()  # optional: any GDSh.Host; plain gdsh when null
     add_child(bridge)
-```
-
-```sh
-claude mcp add -s user mcp-sh-godot-game -e MCP_SH_GODOT_PORT=9511 -- mcp-sh-godot
 ```
 
 - It listens on `9511` unless `port` is set, and says `godot runtime` in `list_commands`.
