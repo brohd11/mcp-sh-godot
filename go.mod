@@ -2,7 +2,7 @@ module github.com/brohd11/mcp-sh-godot
 
 go 1.26.4
 
-require github.com/brohd11/mcp-sh v0.1.1
+require github.com/brohd11/mcp-sh v0.1.3
 
 require (
 	github.com/brohd11/goutil v0.2.1 // indirect
