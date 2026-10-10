@@ -24,12 +24,25 @@ const (
 	addonSrc     = "addon/mcp_sh_godot"
 	addonDir     = "addons/mcp_sh_godot" // relative to the project folder
 	addonName    = "mcp-sh-godot"        // plugin.cfg name
-	gdshDir      = "addons/addon_lib/gdsh"
 	consoleDir   = "addons/editor_console"
 	gdshInstall  = "gdaddon install brohd11/godot-gdsh"
 	addonUsage   = "addon install|status|remove [PROJECT_DIR] [--force]"
 	addonSummary = "Install, check or remove the editor addon in a Godot project"
 )
+
+// gdshDirs are where gdaddon installs gdsh, newest layout first. The addon finds gdsh by
+// its GDSh class wherever it is; these only inform install and status.
+var gdshDirs = []string{"addons/_lib/gdsh", "addons/addon_lib/gdsh"}
+
+// findGdsh returns the gdsh folder in project, relative to it, or "".
+func findGdsh(project string) string {
+	for _, d := range gdshDirs {
+		if dirExists(filepath.Join(project, d)) {
+			return d
+		}
+	}
+	return ""
+}
 
 func addonCommand(version string) mcpsh.Subcommand {
 	return mcpsh.Subcommand{
@@ -142,8 +155,8 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "Installed mcp-sh-godot addon %s in %s\n", version, dest)
-	if !dirExists(filepath.Join(project, gdshDir)) {
-		fmt.Fprintf(stdout, "Warning: gdsh is missing (res://%s). The addon needs it: %s\n", gdshDir, gdshInstall)
+	if findGdsh(project) == "" && !dirExists(filepath.Join(project, consoleDir)) {
+		fmt.Fprintf(stdout, "Warning: gdsh is missing. The addon needs it (or Editor Console): %s\n", gdshInstall)
 	}
 	fmt.Fprintln(stdout, "Enable \"mcp-sh-godot\" in Project Settings > Plugins (an enabled addon reloads on its own).")
 	return nil
@@ -182,9 +195,12 @@ func addonStatus(project, version string, stdout io.Writer) {
 	default:
 		fmt.Fprintf(stdout, "addon           %s (matches the binary)\n", installed)
 	}
-	if dirExists(filepath.Join(project, gdshDir)) {
-		fmt.Fprintln(stdout, "gdsh            installed")
-	} else {
+	switch gdsh := findGdsh(project); {
+	case gdsh != "":
+		fmt.Fprintf(stdout, "gdsh            installed (res://%s)\n", gdsh)
+	case dirExists(filepath.Join(project, consoleDir)):
+		fmt.Fprintf(stdout, "gdsh            not installed: Editor Console's bundled copy is used if it has one, else %s\n", gdshInstall)
+	default:
 		fmt.Fprintf(stdout, "gdsh            missing: %s\n", gdshInstall)
 	}
 	if dirExists(filepath.Join(project, consoleDir)) {

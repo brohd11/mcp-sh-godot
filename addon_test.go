@@ -38,7 +38,7 @@ func TestAddonInstall(t *testing.T) {
 		t.Fatalf("install output: %q", out)
 	}
 	dest := filepath.Join(project, addonDir)
-	for _, f := range []string{"plugin.gd", "bridge.gd", "runner.gd", "bridge_config.gd"} {
+	for _, f := range []string{"plugin.gd", "bridge.gd", "bridge_config.gd"} {
 		if _, err := os.Stat(filepath.Join(dest, f)); err != nil {
 			t.Fatal(err)
 		}
@@ -51,7 +51,7 @@ func TestAddonInstall(t *testing.T) {
 	os.WriteFile(filepath.Join(dest, "old.gd"), nil, 0o644)
 	os.WriteFile(filepath.Join(dest, "old.gd.uid"), nil, 0o644)
 	os.WriteFile(filepath.Join(dest, "bridge.gd.uid"), []byte("uid://x"), 0o644)
-	os.MkdirAll(filepath.Join(project, gdshDir), 0o755)
+	os.MkdirAll(filepath.Join(project, "addons/_lib/gdsh"), 0o755)
 	out, _, code = addon(t, "v1.3.0", "install", project)
 	if code != 0 || strings.Contains(out, "gdsh is missing") {
 		t.Fatalf("upgrade: %d %q", code, out)
@@ -74,6 +74,21 @@ func TestAddonInstall(t *testing.T) {
 	}
 }
 
+func TestAddonInstallWarnings(t *testing.T) {
+	// The legacy gdsh layout counts.
+	project := newProject(t)
+	os.MkdirAll(filepath.Join(project, "addons/addon_lib/gdsh"), 0o755)
+	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") {
+		t.Fatalf("legacy layout: %q", out)
+	}
+	// Editor Console alone may bundle gdsh: no warning.
+	project = newProject(t)
+	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
+	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") {
+		t.Fatalf("editor_console only: %q", out)
+	}
+}
+
 func TestAddonForeignDir(t *testing.T) {
 	project := newProject(t)
 	dest := filepath.Join(project, addonDir)
@@ -93,10 +108,21 @@ func TestAddonStatusAndRemove(t *testing.T) {
 		t.Fatalf("status before: %q", out)
 	}
 	addon(t, "v1.0.0", "install", project)
+	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "gdsh            missing") {
+		t.Fatalf("status without gdsh: %q", out)
+	}
 	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
 	out, _, _ := addon(t, "v1.0.0", "status", project)
-	if !strings.Contains(out, "v1.0.0 (matches the binary)") || !strings.Contains(out, "gdsh            missing") || !strings.Contains(out, "editor_console  installed") {
+	if !strings.Contains(out, "v1.0.0 (matches the binary)") || !strings.Contains(out, "Editor Console's bundled copy") || !strings.Contains(out, "editor_console  installed") {
 		t.Fatalf("status: %q", out)
+	}
+	// Either gdaddon layout is found.
+	for _, d := range gdshDirs {
+		p := newProject(t)
+		os.MkdirAll(filepath.Join(p, d), 0o755)
+		if out, _, _ := addon(t, "v1.0.0", "status", p); !strings.Contains(out, "gdsh            installed (res://"+d+")") {
+			t.Fatalf("status with %s: %q", d, out)
+		}
 	}
 	if out, _, _ := addon(t, "v1.1.0", "status", project); !strings.Contains(out, "v1.0.0, binary is v1.1.0") {
 		t.Fatalf("status mismatch: %q", out)

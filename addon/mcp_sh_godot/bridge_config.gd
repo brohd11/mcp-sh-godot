@@ -6,26 +6,13 @@ extends RefCounted
 ## These sit beside mcp-sh-godot's own config. Scalars replace earlier layers. `commandDirs`
 ## and `exclude` add to them. `commands` merges by name.
 
+const Bridge = preload("res://addons/mcp_sh_godot/bridge.gd")
 const FILE_NAME = "bridge.json"
-
-## Not offered to mcp-sh. Each invoke runs in a fresh context, and the agent's bash
-## already provides shell control, so gdsh's session builtins would be no-ops or
-## duplicates. grep/head/tail duplicate mcp-sh's regex-capable builtins. os and term
-## would hand the agent the OS directly; terminal/clear/hide_log are human UI. help and
-## hidden only re-list other commands.
-## Note this is hygiene, not a security boundary: expr, script call and friends can
-## still do anything the editor can.
-const DEFAULT_EXCLUDE = [
-	"[", "true", "false", "echo", "exit", "return", "break", "continue", "shift",
-	"cd", "pwd", "cn", "pwn", "new_ctx", "source", "function", "builtins",
-	"grep", "head", "tail",
-	"os", "term", "terminal", "clear", "hide_log",
-	"help", "hidden",
-]
 
 const KEYS = ["port", "token", "autostart", "editorConsole", "gdshLib", "commandDirs", "commands", "exclude", "include"]
 
-var port:int = 9510
+## 0: the bridge's default for where it runs (9510 in the editor).
+var port:int = 0
 var token:String = ""
 ## Start listening when the plugin is enabled. Otherwise use Project > Tools.
 var autostart:bool = true
@@ -33,11 +20,11 @@ var autostart:bool = true
 var editor_console:bool = true
 ## Without editor_console: expose gdsh_lib's tree and utils commands when installed.
 var gdsh_lib:bool = true
-## gdsh command directories (GDSh.Load.load_directory), and single command scripts by name.
+## gdsh command directories and single command scripts by name, added to the host.
 var command_dirs:PackedStringArray = []
 var commands:Dictionary = {}
-## Names never offered, and names taken back out of the default exclude list.
-var exclude:PackedStringArray = PackedStringArray(DEFAULT_EXCLUDE)
+## Names never offered (the bridge's defaults plus these), and names taken back out.
+var exclude:PackedStringArray = PackedStringArray(Bridge.DEFAULT_EXCLUDE)
 var include:PackedStringArray = []
 ## Files that were read, in order, for the startup message.
 var sources:PackedStringArray = []
@@ -67,10 +54,6 @@ static func user_path() -> String:
 
 static func project_path() -> String:
 	return "res://.mcp-sh/godot".path_join(FILE_NAME)
-
-
-func is_excluded(name:String) -> bool:
-	return name in exclude and not name in include
 
 
 func _apply_file(path:String) -> void:
