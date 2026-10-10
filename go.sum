@@ -1,7 +1,7 @@
 github.com/brohd11/goutil v0.2.1 h1:prc6cRp24rjHLopQLW11MOe0CGPsQa88lLFUa3Y/bm4=
 github.com/brohd11/goutil v0.2.1/go.mod h1:CNwpa6c70oSgx4GeBgVpa3o38yOVfkBEtr0tqd1jRYs=
-github.com/brohd11/mcp-sh v0.1.0 h1:xs0WY5nhujTJnz/b4v0e6CBg4FHAexsD17k7iqu4qUw=
-github.com/brohd11/mcp-sh v0.1.0/go.mod h1:mSbGz4PmtLOfKD13YhSGBzH2dmngWniWyKSqHkkGrxk=
+github.com/brohd11/mcp-sh v0.1.1 h1:NNfDbFeXT1U3MwbjxiF1f/G7sGTucIhsepzHQ5WcUCY=
+github.com/brohd11/mcp-sh v0.1.1/go.mod h1:mSbGz4PmtLOfKD13YhSGBzH2dmngWniWyKSqHkkGrxk=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/creack/pty v1.1.24 h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=
 github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfvcwE=
