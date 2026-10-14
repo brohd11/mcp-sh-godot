@@ -142,10 +142,10 @@ static func default_host(host_data:Dictionary = {}, gdsh_lib:bool = true):
 	if gdsh_lib:
 		# gd_sh.gd -> _ns -> gdsh -> the library folder that also holds gdsh_lib.
 		var lib = gdsh.resource_path.get_base_dir().get_base_dir().get_base_dir().path_join("gdsh_lib")
-		if DirAccess.dir_exists_absolute(lib.path_join("utils")):
-			new_host.add_command_dir(lib.path_join("utils"))
-		if ResourceLoader.exists(lib.path_join("tree/tree.gd")):
-			new_host.add_command(lib.path_join("tree/tree.gd"))
+		if DirAccess.dir_exists_absolute(lib.path_join("utils/src")):
+			new_host.add_command_dir(lib.path_join("utils/src"))
+		if ResourceLoader.exists(lib.path_join("tree/src/tree.gd")):
+			new_host.add_command(lib.path_join("tree/src/tree.gd"))
 	return new_host
 
 
