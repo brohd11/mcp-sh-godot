@@ -36,6 +36,9 @@ func restart(config = null) -> void:
 	_bridge.token = _config.token
 	_bridge.exclude = _config.exclude
 	_bridge.include = _config.include
+	_bridge.max_request_bytes = _config.max_request_bytes
+	_bridge.max_connections = _config.max_connections
+	_bridge.idle_timeout_ms = _config.idle_timeout_ms
 	_bridge.autostart = false
 	add_child(_bridge)
 	if _bridge.start() != OK:

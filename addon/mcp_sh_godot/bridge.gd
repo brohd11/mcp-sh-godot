@@ -41,7 +41,7 @@ const _READ_CHUNK := 65536
 ## A GDSh.Host, or any object with host_commands(), host_help(name) and host_run(argv, stdin).
 ## A Callable returning one is resolved per request. Null: default_host() when listening starts.
 var host = null
-## 0: 9510 in the editor, 9511 in a running game.
+## 0: 9510 in the editor, 9511 in a running game. -1: any free port; get_port() says which.
 @export var port:int = 0
 @export var token:String = ""
 ## Listen once added to the tree. Otherwise call start().
@@ -51,11 +51,21 @@ var host = null
 ## Names never offered, and names taken back out of exclude.
 @export var exclude:PackedStringArray = PackedStringArray(DEFAULT_EXCLUDE)
 @export var include:PackedStringArray = []
+## Listener bounds, so one misbehaving client can't tie up the main thread. A request line longer
+## than max_request_bytes gets a "Request too large" error. A connection that hasn't sent a
+## complete line idle_timeout_ms after connecting is dropped (a command that is already running
+## isn't timed). Past max_connections, counting those waiting and those being served, new
+## connections are closed at once.
+@export var max_request_bytes:int = 1048576
+@export var max_connections:int = 8
+@export var idle_timeout_ms:int = 10000
 
 var _server:TCPServer
 var _port:int = 0
-# each entry: { "peer": StreamPeerTCP, "buf": String }
+# each entry: { "peer": StreamPeerTCP, "buf": PackedByteArray, "since": int (ticks msec) }
 var _conns:Array = []
+# requests taken off _conns and still awaiting their command
+var _in_flight:int = 0
 # guards against re-entrant _process: a command can pump the main loop (e.g. save_scene's
 # progress bar) which re-enters this node's _process while we're mid-handle.
 var _handling:bool = false
@@ -86,14 +96,14 @@ func start() -> int:
 		return ERR_UNAVAILABLE
 	if host == null:
 		host = default_host()
-	var listen_port = port if port > 0 else (EDITOR_PORT if Engine.is_editor_hint() else RUNTIME_PORT)
+	var listen_port = port if port > 0 else (0 if port < 0 else (EDITOR_PORT if Engine.is_editor_hint() else RUNTIME_PORT))
 	_server = TCPServer.new()
 	var err := _server.listen(listen_port, "127.0.0.1")
 	if err != OK:
 		_server = null
 		push_error("mcp-sh-godot: could not listen on 127.0.0.1:%s (%s). Is another editor, game or bridge using the port?" % [listen_port, error_string(err)])
 		return err
-	_port = listen_port
+	_port = _server.get_local_port()
 	set_process(true)
 	var suffix = " (token required)" if token != "" else ""
 	print("mcp-sh-godot bridge %s (%s) listening on 127.0.0.1:%s%s" % [addon_version(), state(), _port, suffix])
@@ -177,10 +187,15 @@ func _process(_delta:float) -> void:
 	if _handling:
 		return # a command (e.g. save_scene) can pump the main loop and re-enter _process; don't recurse
 
+	var now := Time.get_ticks_msec()
 	while _server.is_connection_available():
 		var peer := _server.take_connection()
-		if peer != null:
-			_conns.append({"peer": peer, "buf": ""})
+		if peer == null:
+			continue
+		if _conns.size() + _in_flight >= max_connections:
+			peer.disconnect_from_host()
+			continue
+		_conns.append({"peer": peer, "buf": PackedByteArray(), "since": now})
 
 	var keep:Array = []
 	for conn in _conns:
@@ -193,23 +208,36 @@ func _process(_delta:float) -> void:
 		if avail > 0:
 			var result := peer.get_partial_data(min(avail, _READ_CHUNK))
 			if result[0] == OK:
-				conn.buf += (result[1] as PackedByteArray).get_string_from_utf8()
+				conn.buf.append_array(result[1] as PackedByteArray)
 
-		var nl := (conn.buf as String).find("\n")
-		if nl != -1:
-			var line := (conn.buf as String).substr(0, nl)
-			conn.buf = (conn.buf as String).substr(nl + 1) # consume before handling so a re-entrant frame can't re-run it
+		# Bytes, not text: a read can end inside a multi-byte character.
+		var nl := (conn.buf as PackedByteArray).find(10)
+		if nl != -1 and nl <= max_request_bytes:
+			var line := (conn.buf as PackedByteArray).slice(0, nl).get_string_from_utf8()
+			conn.buf = PackedByteArray() # consume before handling so a re-entrant frame can't re-run it
 			_handling = true
 			_serve(peer, line) # Not awaited: an async command replies in a later frame.
 			_handling = false
 			continue # one request per connection; _serve drops it after responding
 
+		if (conn.buf as PackedByteArray).size() > max_request_bytes:
+			_reject(peer, "Request too large")
+			continue
+		if now - int(conn.since) > idle_timeout_ms:
+			peer.disconnect_from_host()
+			continue
 		keep.append(conn)
 	_conns = keep
 
 
+func _reject(peer:StreamPeerTCP, message:String) -> void:
+	peer.put_data((JSON.stringify({"id": null, "error": message}) + "\n").to_utf8_buffer())
+	peer.disconnect_from_host()
+
+
 ## Reply once the command finishes; requests arriving meanwhile queue behind it.
 func _serve(peer:StreamPeerTCP, line:String) -> void:
+	_in_flight += 1
 	var resp := {}
 	var json := JSON.new()
 	if json.parse(line) != OK or not (json.data is Dictionary):
@@ -222,6 +250,7 @@ func _serve(peer:StreamPeerTCP, line:String) -> void:
 	if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		peer.put_data(payload.to_utf8_buffer())
 	peer.disconnect_from_host()
+	_in_flight -= 1
 
 
 func _handle_request(req:Dictionary) -> Dictionary:

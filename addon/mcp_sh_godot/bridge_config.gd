@@ -9,9 +9,9 @@ extends RefCounted
 const Bridge = preload("res://addons/mcp_sh_godot/bridge.gd")
 const FILE_NAME = "bridge.json"
 
-const KEYS = ["port", "token", "autostart", "editorConsole", "gdshLib", "commandDirs", "commands", "exclude", "include"]
+const KEYS = ["port", "token", "autostart", "editorConsole", "gdshLib", "commandDirs", "commands", "exclude", "include", "maxRequestBytes", "maxConnections", "idleTimeoutMs"]
 
-## 0: the bridge's default for where it runs (9510 in the editor).
+## 0: the bridge's default for where it runs (9510 in the editor). -1: any free port.
 var port:int = 0
 var token:String = ""
 ## Start listening when the plugin is enabled. Otherwise use Project > Tools.
@@ -26,6 +26,10 @@ var commands:Dictionary = {}
 ## Names never offered (the bridge's defaults plus these), and names taken back out.
 var exclude:PackedStringArray = PackedStringArray(Bridge.DEFAULT_EXCLUDE)
 var include:PackedStringArray = []
+## Listener bounds; see the bridge's exports of the same names.
+var max_request_bytes:int = 1048576
+var max_connections:int = 8
+var idle_timeout_ms:int = 10000
 ## Files that were read, in order, for the startup message.
 var sources:PackedStringArray = []
 
@@ -78,6 +82,12 @@ func _apply_file(path:String) -> void:
 		editor_console = bool(data.editorConsole)
 	if data.has("gdshLib"):
 		gdsh_lib = bool(data.gdshLib)
+	if data.has("maxRequestBytes"):
+		max_request_bytes = int(data.maxRequestBytes)
+	if data.has("maxConnections"):
+		max_connections = int(data.maxConnections)
+	if data.has("idleTimeoutMs"):
+		idle_timeout_ms = int(data.idleTimeoutMs)
 	for dir in data.get("commandDirs", []):
 		command_dirs.append(_resolve(str(dir), base))
 	var cmds = data.get("commands", {})

@@ -60,6 +60,8 @@ func _ready():
 ```
 
 - It listens on `9511` unless `port` is set, and says `godot runtime` in `list_commands`.
+  `port = -1` takes any free port (`get_port()` says which). That suits a game that starts
+  its own agent and passes `MCP_SH_GODOT_PORT` to it.
 - Release builds don't listen unless `serve_in_release` is set: commands can run any code.
 - Without a host it serves gdsh's builtins and gdsh_lib, which work on the live tree. Use
   `GDSh.Host.new({"command_dirs": ["res://game/commands"]})` for the game's own commands.
@@ -80,13 +82,21 @@ Bridge after editing them.
   "commandDirs": ["res://tools/agent"],
   "commands": {"bake": "res://tools/bake_command.gd"},
   "exclude": ["settings"],
-  "include": ["echo"]
+  "include": ["echo"],
+  "maxRequestBytes": 1048576,
+  "maxConnections": 8,
+  "idleTimeoutMs": 10000
 }
 ```
 
 - `commandDirs` are gdsh command folders. `commands` maps a name to one command script.
   Relative paths are relative to the config file, and `~/` is the home folder.
-- `port` 0 is 9510 in the editor.
+- `port` 0 is 9510 in the editor; -1 is any free port.
+- `maxRequestBytes`, `maxConnections` and `idleTimeoutMs` bound the listener, so a stuck or
+  flooding client can't tie up the editor. A longer request line gets a "Request too large"
+  error. More connections than the limit, counting those waiting and those being served, are
+  closed at once. A connection with no complete request line `idleTimeoutMs` after connecting is
+  dropped (running commands aren't timed). The defaults are shown above.
 - `exclude` hides commands. The defaults hide gdsh's session builtins, the text tools the
   shell already has (`grep`, `head`, `tail`) and `os`/`term`. `include` brings a default back.
 - With a token, set the same one for the shell: `MCP_SH_GODOT_TOKEN`. A different port needs
