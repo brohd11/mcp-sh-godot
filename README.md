@@ -1,8 +1,9 @@
 # mcp-sh-godot
 
 A sandboxed bash shell over the live Godot editor, or a running game, served over MCP. Built
-on [mcp-sh](https://github.com/brohd11/mcp-sh). The binary carries its own addon, a native
-mcp-sh host on `127.0.0.1:9510` in the editor (`9511` in a game). The agent runs
+on [mcp-sh](https://github.com/brohd11/mcp-sh). Godot serves its commands through
+[mcp_sh_bridge](https://github.com/brohd11/godot-mcp-sh-bridge), a native mcp-sh host on
+`127.0.0.1:9510` in the editor (`9511` in a game). The agent runs
 [gdsh](https://github.com/brohd11/godot-gdsh) commands with pipes, loops and jq.
 
 ```sh
@@ -18,27 +19,28 @@ mcp-sh-godot setup        # ~/.mcp-sh/godot/ + prints the claude/codex mcp add c
 
 On Windows: `irm https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.ps1 | iex`.
 
-Then, in each Godot project:
+Then, in each Godot project, one of:
 
-```sh
-mcp-sh-godot addon install    # writes res://addons/mcp_sh_godot/, versioned with this binary
-mcp-sh-godot addon status     # addon vs binary version, gdsh, editor_console
-mcp-sh-godot commands         # check what the shell can reach
-```
+- **With [Editor Console](https://github.com/brohd11/Godot-Editor-Console):** you don't need this
+  addon. Run `mcp --start` in the console, or add it to the console's startup commands. The
+  console requires the bridge package and serves its own commands. They run in the console's
+  context (`.gdrc`, the undo stack), taking turns with what you type into it.
+- **Without it:** install the bridge package and gdsh, then this binary's addon:
 
-Enable **mcp-sh-godot** in Project Settings > Plugins. It listens while the editor is open.
-Run `mcp-sh-godot addon install` again after `mcp-sh-godot update`, so the addon matches the
-binary. `addon remove` takes it out.
+  ```sh
+  gdaddon install brohd11/godot-mcp-sh-bridge   # res://addons/_lib/mcp_sh_bridge
+  gdaddon install brohd11/godot-gdsh
+  mcp-sh-godot addon install    # writes res://addons/mcp_sh_godot/, versioned with this binary
+  mcp-sh-godot addon status     # addon vs binary version, bridge, gdsh, editor_console
+  ```
 
-Which commands it offers:
+  Enable **mcp-sh-godot** in Project Settings > Plugins. It listens while the editor is open and
+  offers gdsh's own commands, plus gdsh_lib's `tree` and `utils` when installed. Run
+  `mcp-sh-godot addon install` again after `mcp-sh-godot update`. `addon remove` takes it out.
+  If Editor Console is enabled, the addon disables itself.
 
-- With [Editor Console](https://github.com/brohd11/Godot-Editor-Console) enabled, its
-  commands are offered. They run in the console's context (`.gdrc`, the undo stack), taking
-  turns with what you type into it.
-- Without it, gdsh's own commands are offered, plus gdsh_lib's `tree` and `utils` when
-  installed. gdsh is found by its `GDSh` class wherever gdaddon put it
-  (`gdaddon install brohd11/godot-gdsh`).
-- Either way, commands from `bridge.json` are added.
+Either way, commands from `bridge.json` are added. `mcp-sh-godot commands` checks what the shell
+can reach.
 
 Commands get their arguments exactly as bash passed them: no gdsh quoting, variables or
 aliases apply. `cd` and `pwd` are gdsh's (mcp-sh hands bash's to them), as are `cn` and
@@ -46,12 +48,12 @@ aliases apply. `cd` and `pwd` are gdsh's (mcp-sh hands bash's to them), as are `
 
 ## In a running game
 
-The bridge is a node, so a game or app adds it the way the plugin does. Then register the
-`mcp-sh-godot-game` entry that `setup` (and `--help`) prints for each agent; it sets
-`MCP_SH_GODOT_PORT=9511`.
+The bridge is a node from the mcp_sh_bridge package, so a game or app adds it the way the plugin
+does. It doesn't need this addon. Then register the `mcp-sh-godot-game` entry that `setup` (and
+`--help`) prints for each agent; it sets `MCP_SH_GODOT_PORT=9511`.
 
 ```gdscript
-const McpShBridge = preload("res://addons/mcp_sh_godot/bridge.gd")
+const McpShBridge = preload("res://addons/_lib/mcp_sh_bridge/src/bridge.gd")
 
 func _ready():
     var bridge = McpShBridge.new()
@@ -63,21 +65,21 @@ func _ready():
   `port = -1` takes any free port (`get_port()` says which). That suits a game that starts
   its own agent and passes `MCP_SH_GODOT_PORT` to it.
 - Release builds don't listen unless `serve_in_release` is set: commands can run any code.
-- Without a host it serves gdsh's builtins and gdsh_lib, which work on the live tree. Use
+- Without a host it serves gdsh's builtins, which work on the live tree. Use
   `GDSh.Host.new({"command_dirs": ["res://game/commands"]})` for the game's own commands.
 
 ## Bridge config
 
-The addon reads `~/.mcp-sh/godot/bridge.json`, then `res://.mcp-sh/godot/bridge.json`.
-Later files win, and `commandDirs`/`exclude` add up. Use Project > Tools > Restart mcp-sh-godot
-Bridge after editing them.
+Editor Console and the addon read `~/.mcp-sh/godot/bridge.json`, then
+`res://.mcp-sh/godot/bridge.json`. Later files win, and `commandDirs`/`exclude` add up. Use
+Project > Tools > Restart mcp-sh-godot Bridge (or `mcp --stop; mcp --start` in Editor Console)
+after editing them. `autostart` and `gdshLib` are the addon's keys only.
 
 ```json
 {
   "port": 0,
   "token": "",
   "autostart": true,
-  "editorConsole": true,
   "gdshLib": true,
   "commandDirs": ["res://tools/agent"],
   "commands": {"bake": "res://tools/bake_command.gd"},
@@ -115,7 +117,8 @@ make package   # release archives for every platform
 ```
 
 The addon's source is `addon/mcp_sh_godot/`, embedded into the binary. To work on it, symlink
-that folder into a project's `addons/`.
+that folder into a project's `addons/`. The listener, its config loader and their tests live in
+the [mcp_sh_bridge](https://github.com/brohd11/godot-mcp-sh-bridge) package.
 
 The makefile body, installers, workflows and `cliff.toml` are rendered from
 [sh-templates](https://github.com/brohd11/sh-templates) by the workspace's `render-go.sh`.

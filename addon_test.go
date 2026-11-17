@@ -34,11 +34,11 @@ func TestAddonInstall(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("install: %d %s", code, errOut)
 	}
-	if !strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "Enable \"mcp-sh-godot\"") {
+	if !strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "mcp_sh_bridge package is missing") || !strings.Contains(out, "Enable \"mcp-sh-godot\"") {
 		t.Fatalf("install output: %q", out)
 	}
 	dest := filepath.Join(project, addonDir)
-	for _, f := range []string{"plugin.gd", "bridge.gd", "bridge_config.gd"} {
+	for _, f := range []string{"plugin.gd", "plugin.cfg"} {
 		if _, err := os.Stat(filepath.Join(dest, f)); err != nil {
 			t.Fatal(err)
 		}
@@ -50,13 +50,14 @@ func TestAddonInstall(t *testing.T) {
 	// Files of an older version go; Godot's .uid files of kept scripts stay.
 	os.WriteFile(filepath.Join(dest, "old.gd"), nil, 0o644)
 	os.WriteFile(filepath.Join(dest, "old.gd.uid"), nil, 0o644)
-	os.WriteFile(filepath.Join(dest, "bridge.gd.uid"), []byte("uid://x"), 0o644)
+	os.WriteFile(filepath.Join(dest, "plugin.gd.uid"), []byte("uid://x"), 0o644)
 	os.MkdirAll(filepath.Join(project, "addons/_lib/gdsh"), 0o755)
+	os.MkdirAll(filepath.Join(project, bridgeDir), 0o755)
 	out, _, code = addon(t, "v1.3.0", "install", project)
-	if code != 0 || strings.Contains(out, "gdsh is missing") {
+	if code != 0 || strings.Contains(out, "gdsh is missing") || strings.Contains(out, "mcp_sh_bridge") {
 		t.Fatalf("upgrade: %d %q", code, out)
 	}
-	for f, want := range map[string]bool{"old.gd": false, "old.gd.uid": false, "bridge.gd.uid": true} {
+	for f, want := range map[string]bool{"old.gd": false, "old.gd.uid": false, "plugin.gd.uid": true} {
 		if _, err := os.Stat(filepath.Join(dest, f)); (err == nil) != want {
 			t.Errorf("%s exists=%v, want %v", f, err == nil, want)
 		}
@@ -84,7 +85,7 @@ func TestAddonInstallWarnings(t *testing.T) {
 	// Editor Console alone may bundle gdsh: no warning.
 	project = newProject(t)
 	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
-	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") {
+	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "mcp --start") {
 		t.Fatalf("editor_console only: %q", out)
 	}
 }
@@ -108,12 +109,14 @@ func TestAddonStatusAndRemove(t *testing.T) {
 		t.Fatalf("status before: %q", out)
 	}
 	addon(t, "v1.0.0", "install", project)
-	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "gdsh            missing") {
+	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "gdsh            missing") || !strings.Contains(out, "bridge          missing") {
 		t.Fatalf("status without gdsh: %q", out)
 	}
 	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
+	os.MkdirAll(filepath.Join(project, bridgeDir), 0o755)
+	os.WriteFile(filepath.Join(project, bridgeDir, "package.cfg"), []byte("[package]\nversion=\"0.1.0\"\n"), 0o644)
 	out, _, _ := addon(t, "v1.0.0", "status", project)
-	if !strings.Contains(out, "v1.0.0 (matches the binary)") || !strings.Contains(out, "Editor Console's bundled copy") || !strings.Contains(out, "editor_console  installed") {
+	if !strings.Contains(out, "v1.0.0 (matches the binary)") || !strings.Contains(out, "bridge          0.1.0") || !strings.Contains(out, "Editor Console's bundled copy") || !strings.Contains(out, "editor_console  installed") {
 		t.Fatalf("status: %q", out)
 	}
 	// Either gdaddon layout is found.
