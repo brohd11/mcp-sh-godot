@@ -25,19 +25,18 @@ Then, in each Godot project, one of:
   addon. Run `mcp --start` in the console, or add it to the console's startup commands. The
   console requires the bridge package and serves its own commands. They run in the console's
   context (`.gdrc`, the undo stack), taking turns with what you type into it.
-- **Without it:** install the bridge package and gdsh, then this binary's addon:
+- **Without it:** install this binary's addon. It bundles everything it needs (the bridge,
+  gdsh, and gdsh_lib's utils, tree and editor commands), so nothing else is installed:
 
   ```sh
-  gdaddon install brohd11/godot-mcp-sh-bridge   # res://addons/_lib/mcp_sh_bridge
-  gdaddon install brohd11/godot-gdsh
-  mcp-sh-godot addon install    # writes res://addons/mcp_sh_godot/, versioned with this binary
-  mcp-sh-godot addon status     # addon vs binary version, bridge, gdsh, editor_console
+  mcp-sh-godot addon install    # writes res://addons/mcp_sh_godot/
+  mcp-sh-godot addon status     # installed vs carried addon version, editor_console
   ```
 
   Enable **mcp-sh-godot** in Project Settings > Plugins. It listens while the editor is open and
-  offers gdsh's own commands, plus gdsh_lib's `tree` and `utils` when installed. Run
-  `mcp-sh-godot addon install` again after `mcp-sh-godot update`. `addon remove` takes it out.
-  If Editor Console is enabled, the addon disables itself.
+  offers gdsh's commands plus `ls`, `cat`, `find`, `tree`, `editor`, `settings` and `resource`.
+  Run `mcp-sh-godot addon install` again after `mcp-sh-godot update`. `addon remove` takes it
+  out. If Editor Console is enabled, the addon disables itself.
 
 Either way, commands from `bridge.json` are added. `mcp-sh-godot commands` checks what the shell
 can reach.
@@ -116,9 +115,19 @@ make test
 make package   # release archives for every platform
 ```
 
-The addon's source is `addon/mcp_sh_godot/`, embedded into the binary. To work on it, symlink
-that folder into a project's `addons/`. The listener, its config loader and their tests live in
-the [mcp_sh_bridge](https://github.com/brohd11/godot-mcp-sh-bridge) package.
+The addon is the release export of [godot-mcp-sh-plugin](https://github.com/brohd11/godot-mcp-sh-plugin),
+the plugin's own repo, built by gdpackage's release workflow. `addon/mcp_sh_godot/` is that
+export, vendored and committed, and embedded into the binary. Don't edit it here. To update it:
+
+```sh
+scripts/fetch_addon.sh            # latest plugin release (or: go generate)
+scripts/fetch_addon.sh v0.2.0     # a given tag
+scripts/fetch_addon.sh --zip FILE # a local export, for testing before a release
+```
+
+The listener, its config loader and their tests live in the
+[mcp_sh_bridge](https://github.com/brohd11/godot-mcp-sh-bridge) package, and the editor commands in
+[gdsh_lib editor](https://github.com/brohd11/godot-gdsh-lib-editor).
 
 The makefile body, installers, workflows and `cliff.toml` are rendered from
 [sh-templates](https://github.com/brohd11/sh-templates) by the workspace's `render-go.sh`.

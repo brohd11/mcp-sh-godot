@@ -14,36 +14,34 @@ import (
 	"github.com/brohd11/mcp-sh"
 )
 
-// addonFS is the editor addon, written into a project by `mcp-sh-godot addon install`, so
-// the shell and the bridge it talks to always come from the same tag.
+// addonFS is the editor addon, written into a project by `mcp-sh-godot addon install`. It is
+// the released export of github.com/brohd11/godot-mcp-sh-plugin, which bundles every library it
+// uses, vendored by scripts/fetch_addon.sh (`go generate`) and committed.
 //
+//go:generate sh scripts/fetch_addon.sh
 //go:embed all:addon/mcp_sh_godot
 var addonFS embed.FS
 
 const (
-	addonSrc      = "addon/mcp_sh_godot"
-	addonDir      = "addons/mcp_sh_godot" // relative to the project folder
-	addonName     = "mcp-sh-godot"        // plugin.cfg name
-	consoleDir    = "addons/editor_console"
-	bridgeDir     = "addons/_lib/mcp_sh_bridge" // the listener package the addon loads
-	gdshInstall   = "gdaddon install brohd11/godot-gdsh"
-	bridgeInstall = "gdaddon install brohd11/godot-mcp-sh-bridge"
-	addonUsage    = "addon install|status|remove [PROJECT_DIR] [--force]"
-	addonSummary  = "Install, check or remove the editor addon in a Godot project"
+	addonSrc     = "addon/mcp_sh_godot"
+	addonDir     = "addons/mcp_sh_godot" // relative to the project folder
+	addonName    = "mcp-sh-godot"        // plugin.cfg name
+	consoleDir   = "addons/editor_console"
+	addonUsage   = "addon install|status|remove [PROJECT_DIR] [--force]"
+	addonSummary = "Install, check or remove the editor addon in a Godot project"
 )
 
-// gdshDirs are where gdaddon installs gdsh, newest layout first. The addon finds gdsh by
-// its GDSh class wherever it is; these only inform install and status.
-var gdshDirs = []string{"addons/_lib/gdsh", "addons/addon_lib/gdsh"}
-
-// findGdsh returns the gdsh folder in project, relative to it, or "".
-func findGdsh(project string) string {
-	for _, d := range gdshDirs {
-		if dirExists(filepath.Join(project, d)) {
-			return d
-		}
+// embeddedVersion is the version in the embedded addon's plugin.cfg. The plugin is released
+// on its own, so this is not the binary's version.
+func embeddedVersion() string {
+	data, err := addonFS.ReadFile(addonSrc + "/plugin.cfg")
+	if err != nil {
+		return "unknown"
 	}
-	return ""
+	if m := cfgVersion.FindSubmatch(data); m != nil {
+		return string(m[1])
+	}
+	return "unknown"
 }
 
 func addonCommand(version string) mcpsh.Subcommand {
@@ -85,9 +83,9 @@ func runAddon(version string, args []string, stdout, stderr io.Writer) int {
 	}
 	switch sub {
 	case "install":
-		err = installAddon(project, version, force, stdout)
+		err = installAddon(project, embeddedVersion(), force, stdout)
 	case "status":
-		addonStatus(project, version, stdout)
+		addonStatus(project, version, embeddedVersion(), stdout)
 	case "remove":
 		err = removeAddon(project, stdout)
 	}
@@ -127,7 +125,7 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 				return fmt.Errorf("%s exists but is not the mcp-sh-godot addon; use --force to replace it", dest)
 			}
 		case compareVersions(installed, version) > 0 && !force:
-			return fmt.Errorf("installed addon %s is newer than this binary (%s); update mcp-sh-godot, or use --force", installed, version)
+			return fmt.Errorf("installed addon %s is newer than the one this binary carries (%s); update mcp-sh-godot, or use --force", installed, version)
 		}
 	}
 	keep := map[string]bool{}
@@ -144,9 +142,6 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if rel == "plugin.cfg" {
-			data = stampVersion(data, version)
-		}
 		keep[rel] = true
 		return os.WriteFile(target, data, 0o644)
 	})
@@ -159,12 +154,6 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 	fmt.Fprintf(stdout, "Installed mcp-sh-godot addon %s in %s\n", version, dest)
 	if dirExists(filepath.Join(project, consoleDir)) {
 		fmt.Fprintln(stdout, "Note: Editor Console is installed. It serves its own commands with 'mcp --start', and this addon stays off while it runs.")
-	}
-	if !dirExists(filepath.Join(project, bridgeDir)) {
-		fmt.Fprintf(stdout, "Warning: the mcp_sh_bridge package is missing. The addon needs it: %s\n", bridgeInstall)
-	}
-	if findGdsh(project) == "" && !dirExists(filepath.Join(project, consoleDir)) {
-		fmt.Fprintf(stdout, "Warning: gdsh is missing. The addon needs it (or Editor Console): %s\n", gdshInstall)
 	}
 	fmt.Fprintln(stdout, "Enable \"mcp-sh-godot\" in Project Settings > Plugins (an enabled addon reloads on its own).")
 	return nil
@@ -190,36 +179,23 @@ func pruneAddon(dest string, keep map[string]bool) error {
 	})
 }
 
-func addonStatus(project, version string, stdout io.Writer) {
+func addonStatus(project, binary, embedded string, stdout io.Writer) {
 	fmt.Fprintf(stdout, "project         %s\n", project)
 	dest := filepath.Join(project, addonDir)
 	switch name, installed, ok := readPluginCfg(dest); {
 	case !ok && !dirExists(dest):
-		fmt.Fprintln(stdout, "addon           not installed: mcp-sh-godot addon install")
+		fmt.Fprintf(stdout, "addon           not installed (this binary, %s, carries %s): mcp-sh-godot addon install\n", binary, embedded)
 	case !ok || name != addonName:
 		fmt.Fprintf(stdout, "addon           res://%s is not the mcp-sh-godot addon\n", addonDir)
-	case installed != version:
-		fmt.Fprintf(stdout, "addon           %s, binary is %s: mcp-sh-godot addon install\n", installed, version)
+	case installed != embedded:
+		fmt.Fprintf(stdout, "addon           %s, this binary carries %s: mcp-sh-godot addon install\n", installed, embedded)
 	default:
-		fmt.Fprintf(stdout, "addon           %s (matches the binary)\n", installed)
-	}
-	if v, ok := readPackageVersion(filepath.Join(project, bridgeDir)); ok {
-		fmt.Fprintf(stdout, "bridge          %s (res://%s)\n", v, bridgeDir)
-	} else {
-		fmt.Fprintf(stdout, "bridge          missing: %s\n", bridgeInstall)
-	}
-	switch gdsh := findGdsh(project); {
-	case gdsh != "":
-		fmt.Fprintf(stdout, "gdsh            installed (res://%s)\n", gdsh)
-	case dirExists(filepath.Join(project, consoleDir)):
-		fmt.Fprintf(stdout, "gdsh            not installed: Editor Console's bundled copy is used if it has one, else %s\n", gdshInstall)
-	default:
-		fmt.Fprintf(stdout, "gdsh            missing: %s\n", gdshInstall)
+		fmt.Fprintf(stdout, "addon           %s (matches this binary's)\n", installed)
 	}
 	if dirExists(filepath.Join(project, consoleDir)) {
 		fmt.Fprintln(stdout, "editor_console  installed: serve with its 'mcp --start'; this addon is not needed and stays off while it runs")
 	} else {
-		fmt.Fprintln(stdout, "editor_console  not installed: gdsh and bridge.json commands only")
+		fmt.Fprintln(stdout, "editor_console  not installed: the addon serves gdsh, the editor commands and bridge.json's")
 	}
 }
 
@@ -245,19 +221,6 @@ var (
 	cfgVersion = regexp.MustCompile(`(?m)^version="([^"]*)"`)
 )
 
-// readPackageVersion reads version= from the package.cfg in dir.
-func readPackageVersion(dir string) (string, bool) {
-	data, err := os.ReadFile(filepath.Join(dir, "package.cfg"))
-	if err != nil {
-		return "", false
-	}
-	m := cfgVersion.FindSubmatch(data)
-	if m == nil {
-		return "unknown", true
-	}
-	return string(m[1]), true
-}
-
 // readPluginCfg reads the name and version of the addon installed in dir.
 func readPluginCfg(dir string) (name, version string, ok bool) {
 	data, err := os.ReadFile(filepath.Join(dir, "plugin.cfg"))
@@ -271,10 +234,6 @@ func readPluginCfg(dir string) (name, version string, ok bool) {
 		version = string(m[1])
 	}
 	return name, version, true
-}
-
-func stampVersion(cfg []byte, version string) []byte {
-	return cfgVersion.ReplaceAll(cfg, []byte(`version="`+strings.ReplaceAll(version, `"`, ``)+`"`))
 }
 
 func dirExists(p string) bool {

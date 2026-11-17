@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,34 +29,33 @@ func TestAddonInstall(t *testing.T) {
 	project := newProject(t)
 	sub := filepath.Join(project, "scenes")
 	os.Mkdir(sub, 0o755)
+	embedded := embeddedVersion()
 
 	// Found from a subfolder, like running in the shell anywhere inside the project.
-	out, errOut, code := addon(t, "v1.2.0", "install", sub)
+	out, errOut, code := addon(t, "v9.9.9", "install", sub)
 	if code != 0 {
 		t.Fatalf("install: %d %s", code, errOut)
 	}
-	if !strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "mcp_sh_bridge package is missing") || !strings.Contains(out, "Enable \"mcp-sh-godot\"") {
+	if !strings.Contains(out, "addon "+embedded) || !strings.Contains(out, "Enable \"mcp-sh-godot\"") || strings.Contains(out, "Editor Console") {
 		t.Fatalf("install output: %q", out)
 	}
 	dest := filepath.Join(project, addonDir)
-	for _, f := range []string{"plugin.gd", "plugin.cfg"} {
+	for _, f := range []string{"plugin.gd", "plugin.cfg", "src/host.gd"} {
 		if _, err := os.Stat(filepath.Join(dest, f)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if name, v, _ := readPluginCfg(dest); name != addonName || v != "v1.2.0" {
-		t.Fatalf("plugin.cfg: %q %q", name, v)
+	// The binary's version never reaches plugin.cfg: the plugin carries its own.
+	if name, v, _ := readPluginCfg(dest); name != addonName || v != embedded {
+		t.Fatalf("plugin.cfg: %q %q, want %q", name, v, embedded)
 	}
 
 	// Files of an older version go; Godot's .uid files of kept scripts stay.
 	os.WriteFile(filepath.Join(dest, "old.gd"), nil, 0o644)
 	os.WriteFile(filepath.Join(dest, "old.gd.uid"), nil, 0o644)
 	os.WriteFile(filepath.Join(dest, "plugin.gd.uid"), []byte("uid://x"), 0o644)
-	os.MkdirAll(filepath.Join(project, "addons/_lib/gdsh"), 0o755)
-	os.MkdirAll(filepath.Join(project, bridgeDir), 0o755)
-	out, _, code = addon(t, "v1.3.0", "install", project)
-	if code != 0 || strings.Contains(out, "gdsh is missing") || strings.Contains(out, "mcp_sh_bridge") {
-		t.Fatalf("upgrade: %d %q", code, out)
+	if _, _, code = addon(t, "v9.9.9", "install", project); code != 0 {
+		t.Fatalf("reinstall: %d", code)
 	}
 	for f, want := range map[string]bool{"old.gd": false, "old.gd.uid": false, "plugin.gd.uid": true} {
 		if _, err := os.Stat(filepath.Join(dest, f)); (err == nil) != want {
@@ -63,30 +63,38 @@ func TestAddonInstall(t *testing.T) {
 		}
 	}
 
-	// A newer installed addon needs --force; a dev binary never blocks.
-	if _, errOut, code := addon(t, "v1.2.9", "install", project); code != 1 || !strings.Contains(errOut, "newer than this binary") {
+	// A newer installed addon needs --force; an unversioned one never blocks.
+	cfg := filepath.Join(dest, "plugin.cfg")
+	os.WriteFile(cfg, []byte("[plugin]\nname=\"mcp-sh-godot\"\nversion=\"99.0.0\"\n"), 0o644)
+	if _, errOut, code := addon(t, "v1", "install", project); code != 1 || !strings.Contains(errOut, "newer than the one this binary carries") {
 		t.Fatalf("downgrade: %d %q", code, errOut)
 	}
-	if _, _, code := addon(t, "v1.2.9", "install", project, "--force"); code != 0 {
+	if _, _, code := addon(t, "v1", "install", project, "--force"); code != 0 {
 		t.Fatal("forced downgrade failed")
 	}
-	if _, _, code := addon(t, "dev", "install", project); code != 0 {
-		t.Fatal("dev install blocked")
+	os.WriteFile(cfg, []byte("[plugin]\nname=\"mcp-sh-godot\"\nversion=\"dev\"\n"), 0o644)
+	if _, _, code := addon(t, "v1", "install", project); code != 0 {
+		t.Fatal("dev addon blocked the install")
 	}
 }
 
-func TestAddonInstallWarnings(t *testing.T) {
-	// The legacy gdsh layout counts.
-	project := newProject(t)
-	os.MkdirAll(filepath.Join(project, "addons/addon_lib/gdsh"), 0o755)
-	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") {
-		t.Fatalf("legacy layout: %q", out)
+// The embedded addon is a release export: the libraries it needs are bundled under src/remote.
+func TestEmbeddedAddonIsSelfContained(t *testing.T) {
+	for _, lib := range []string{"gdsh", "mcp_sh_bridge", "gdsh_lib/editor", "gdsh_lib/tree", "gdsh_lib/utils"} {
+		if _, err := fs.Stat(addonFS, addonSrc+"/src/remote/addons/_lib/"+lib); err != nil {
+			t.Errorf("embedded addon lacks %s: %v", lib, err)
+		}
 	}
-	// Editor Console alone may bundle gdsh: no warning.
-	project = newProject(t)
+	if v := embeddedVersion(); v == "unknown" || v == "" {
+		t.Errorf("embedded plugin.cfg has no version")
+	}
+}
+
+func TestAddonInstallEditorConsoleNote(t *testing.T) {
+	project := newProject(t)
 	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
-	if out, _, _ := addon(t, "v1.0.0", "install", project); strings.Contains(out, "gdsh is missing") || !strings.Contains(out, "mcp --start") {
-		t.Fatalf("editor_console only: %q", out)
+	if out, _, _ := addon(t, "v1.0.0", "install", project); !strings.Contains(out, "mcp --start") {
+		t.Fatalf("editor_console note: %q", out)
 	}
 }
 
@@ -105,29 +113,21 @@ func TestAddonForeignDir(t *testing.T) {
 
 func TestAddonStatusAndRemove(t *testing.T) {
 	project := newProject(t)
-	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "not installed") {
+	embedded := embeddedVersion()
+	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "not installed") || !strings.Contains(out, "carries "+embedded) {
 		t.Fatalf("status before: %q", out)
 	}
 	addon(t, "v1.0.0", "install", project)
-	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "gdsh            missing") || !strings.Contains(out, "bridge          missing") {
-		t.Fatalf("status without gdsh: %q", out)
-	}
-	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
-	os.MkdirAll(filepath.Join(project, bridgeDir), 0o755)
-	os.WriteFile(filepath.Join(project, bridgeDir, "package.cfg"), []byte("[package]\nversion=\"0.1.0\"\n"), 0o644)
 	out, _, _ := addon(t, "v1.0.0", "status", project)
-	if !strings.Contains(out, "v1.0.0 (matches the binary)") || !strings.Contains(out, "bridge          0.1.0") || !strings.Contains(out, "Editor Console's bundled copy") || !strings.Contains(out, "editor_console  installed") {
+	if !strings.Contains(out, embedded+" (matches this binary's)") || !strings.Contains(out, "editor_console  not installed") {
 		t.Fatalf("status: %q", out)
 	}
-	// Either gdaddon layout is found.
-	for _, d := range gdshDirs {
-		p := newProject(t)
-		os.MkdirAll(filepath.Join(p, d), 0o755)
-		if out, _, _ := addon(t, "v1.0.0", "status", p); !strings.Contains(out, "gdsh            installed (res://"+d+")") {
-			t.Fatalf("status with %s: %q", d, out)
-		}
+	os.MkdirAll(filepath.Join(project, consoleDir), 0o755)
+	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "editor_console  installed") {
+		t.Fatalf("status with editor_console: %q", out)
 	}
-	if out, _, _ := addon(t, "v1.1.0", "status", project); !strings.Contains(out, "v1.0.0, binary is v1.1.0") {
+	os.WriteFile(filepath.Join(project, addonDir, "plugin.cfg"), []byte("[plugin]\nname=\"mcp-sh-godot\"\nversion=\"0.0.1\"\n"), 0o644)
+	if out, _, _ := addon(t, "v1.0.0", "status", project); !strings.Contains(out, "0.0.1, this binary carries "+embedded) {
 		t.Fatalf("status mismatch: %q", out)
 	}
 	if _, _, code := addon(t, "v1.0.0", "remove", project); code != 0 {
