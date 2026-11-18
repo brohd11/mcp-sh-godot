@@ -11,7 +11,7 @@ const Method = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/sr
 
 ## Lazy to avoid the loader's CommandBase preload cycle; the tag keeps relocated copies complete.
 static func get_loader():
-	return load("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/load.gd") #! dependency
+	return load("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/load.gd") #! gdp-dependency
 
 
 ## Whether a scope entry appears in top-level listings (root completion, `hidden`, `help`).

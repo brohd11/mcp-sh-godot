@@ -19,7 +19,7 @@ extends Node
 const PROTOCOL = 1
 ## For the version in hello. An export copies it beside this script under another name, so the
 ## copy isn't taken for a package of its own.
-const PACKAGE_CFG = "res://addons/_lib/mcp_sh_bridge/package.cfg" #! gdp-dependency ./bridge_package.cfg
+const PACKAGE_CFG = "res://addons/mcp_sh_godot/src/remote/addons/_lib/mcp_sh_bridge/src/bridge_package.cfg" #! gdp-dependency ./bridge_package.cfg
 const EDITOR_PORT = 9510
 const RUNTIME_PORT = 9511
 const NO_HOST = "no commands to serve: the bridge has no host and gdsh is not installed"
