@@ -53,7 +53,11 @@ func _execute(ctx:Context):
 			return ExitCode.FAIL
 
 	for obj in targets:
-		_print_object(ctx, obj)
+		# A checkpoint can yield a frame; skip nodes freed meanwhile.
+		if await ctx.checkpoint():
+			return ExitCode.CANCELLED
+		if is_instance_valid(obj):
+			_print_object(ctx, obj)
 	return ExitCode.OK
 
 

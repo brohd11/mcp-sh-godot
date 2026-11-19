@@ -33,6 +33,8 @@ var _added:Array[Dictionary] = []
 ## Refreshed with the user directories, so they are offered and say why when run.
 var _broken:Dictionary = {}
 var _undo_session = null
+## The running request's cancel token (see cancel()).
+var _running_token = null
 signal _turn_freed
 var _running := false
 var _queue:Array[int] = []
@@ -173,10 +175,16 @@ func host_help(name:String) -> String:
 	return text
 
 
+#! keys timeout_ms:int max_output:int cancel_check:Callable
 ## Run one offered command once its turn comes, waiting for async commands to finish.
 ## argv[0] is the command name; `stdin` is what it reads as piped input. Output is plain text
 ## (no BBCode). Returns {stdout, stderr, exit_code}.
-func host_run(argv:Array, stdin:String = "") -> Dictionary:
+## opts, all optional and off by default: timeout_ms counts from this call, so time spent queued
+## counts too; max_output caps output bytes; cancel_check is polled at checkpoints and returns a
+## reason to stop ("" to go on). Hitting any of them cancels the run (exit 124 or 130).
+func host_run(argv:Array, stdin:String = "", opts:Dictionary = {}) -> Dictionary:
+	var timeout_ms = int(opts.get("timeout_ms", 0))
+	var deadline = Time.get_ticks_msec() + timeout_ms if timeout_ms > 0 else 0
 	var scopes = get_scopes()
 	if not argv.is_empty() and _broken.has(str(argv[0])):
 		return _broken_result(str(argv[0]))
@@ -188,9 +196,17 @@ func host_run(argv:Array, stdin:String = "") -> Dictionary:
 		if not cwd.is_empty(): root.cwd = cwd
 		if not cwn.is_empty(): root.cwn = cwn
 		var ctx = Context.new_ctx("Host request", root)
+		var token = ctx.cancel_token
+		token.deadline_ms = deadline
+		token.max_output = int(opts.get("max_output", 0))
+		var check = opts.get("cancel_check")
+		if check is Callable:
+			token.check = check
 		ctx.scopes.merge(_get_added_scopes(), true)
 		ctx.stdin = stdin
+		_running_token = token
 		await Execute.execute_argv(argv, ctx)
+		_running_token = null
 		# `cd` and `cn` propagate up to the root.
 		cwd = root.cwd
 		cwn = root.cwn
@@ -206,6 +222,12 @@ func host_run(argv:Array, stdin:String = "") -> Dictionary:
 			"exit_code": ctx.exit_code,
 		}
 	return await _run_serialized(work)
+
+
+## Cancel the request that is running, if any; it stops at its next check.
+func cancel(reason:String = "cancelled") -> void:
+	if _running_token != null:
+		_running_token.cancel(reason)
 
 
 #region Virtuals

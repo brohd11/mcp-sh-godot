@@ -5,7 +5,7 @@ const NO_MATCHING_COMMAND = &"__no_matching_command__"
 const FUNCTION_KEY = "__function__"
 const RETURN_KEY = "__function_return__"
 
-enum ExitCode { OK, FAIL, ERR }
+enum ExitCode { OK, FAIL, ERR, TIMEOUT = 124, CANCELLED = 130 }
 enum FlagType { NONE, FILE, DIR, CLASS, USER_CLASS }
 
 class ScopeDataKeys:

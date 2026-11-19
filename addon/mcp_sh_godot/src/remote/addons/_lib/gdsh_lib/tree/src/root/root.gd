@@ -4,6 +4,8 @@ const TreeUtil = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_
 
 const _HELP = \
 "Print the SceneTree root path (/root), to start a tree command chain.
+In the editor /root holds the editor's own UI (thousands of nodes); start from /scene or
+'editor scene root' to work on the edited scene.
 Usage: tree root | tree nodes"
 
 

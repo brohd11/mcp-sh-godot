@@ -1,5 +1,7 @@
 extends "res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/command_base.gd"
 
+const NodePaths = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/node_paths.gd")
+
 
 const _HELP = \
 "Print the selected node paths, or select/deselect the node paths from stdin.
@@ -50,7 +52,7 @@ func _execute(ctx:Context):
 			editor_selection.clear()
 		else:
 			for node in editor_selection.get_selected_nodes():
-				ctx.append_output(str(node.get_path()))
+				ctx.append_output(NodePaths.path_of(node))
 		return ExitCode.OK
 
 	if not add_flag and not deselect_flag:
@@ -65,7 +67,7 @@ func _execute(ctx:Context):
 			ctx.append_error("Not an absolute node path: " + p)
 			failed = true
 			continue
-		var node = edited_root.get_node_or_null(p)
+		var node = NodePaths.resolve(p)
 		if not is_instance_valid(node):
 			ctx.append_error("Node not found: " + p)
 			failed = true

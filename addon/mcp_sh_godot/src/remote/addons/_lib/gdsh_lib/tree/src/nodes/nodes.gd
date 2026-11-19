@@ -81,7 +81,9 @@ func _execute(ctx:Context):
 	if inputs.is_empty():
 		return ExitCode.FAIL
 
-	for input:Node in inputs:
+	for input in inputs:
+		if not is_instance_valid(input):
+			continue
 		# New children of input would get this owner; --owned keeps nodes in that same scene.
 		var scene_owner = TreeUtil.owner_for(input) if owned_flag else null
 		if pretty_flag:
@@ -95,7 +97,10 @@ func _execute(ctx:Context):
 		if include_self_flag:
 			nodes.push_front(input)
 		for n in nodes:
-			if _passes(n, scene_owner):
+			# A checkpoint can yield a frame; skip nodes freed meanwhile.
+			if await ctx.checkpoint():
+				return ExitCode.CANCELLED
+			if is_instance_valid(n) and _passes(n, scene_owner):
 				ctx.append_output(TreeUtil.path_of(n))
 	return ExitCode.OK
 
@@ -119,6 +124,8 @@ func _passes(n:Node, scene_owner:Node) -> bool:
 
 ## with_children lists node's children even without --recursive (an --include-self input).
 func _print_pretty(ctx:Context, node:Node, depth:int, scene_owner:Node, with_children:=false):
+	if ctx.is_cancelled():
+		return
 	if _passes(node, scene_owner):
 		var line = "  ".repeat(depth) + Utils.color_text(node.name, _NAME_COLOR)
 		line += "  " + Utils.color_text(node.get_class(), _CLASS_COLOR)

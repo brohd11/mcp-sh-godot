@@ -4,8 +4,9 @@ extends "res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/command_
 
 const _HELP = \
 "Read and change nodes in the SceneTree. Commands take absolute node paths on stdin, one per line,
-and print absolute paths, so a chain starts from a path:
-  tree root | tree nodes --recursive Label | tree prop text Hi
+and print absolute paths, so a chain starts from a path. /scene is the edited scene root (the
+current scene in a game), and nodes inside it print as /scene/...:
+  editor scene root | tree nodes --recursive Label | tree prop text Hi
 Usage: ... | tree <command>"
 
 

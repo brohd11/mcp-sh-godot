@@ -8,6 +8,7 @@ const COMMANDS = [
 	TREE,
 	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/add/add.gd"),
 	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/attach/attach.gd"),
+	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/call/call.gd"),
 	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/duplicate/duplicate.gd"),
 	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/free/free.gd"),
 	preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/src/group/group.gd"),

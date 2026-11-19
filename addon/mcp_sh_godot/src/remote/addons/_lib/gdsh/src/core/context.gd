@@ -6,6 +6,7 @@ const Types = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src
 const Undo = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/undo.gd")
 const Utils = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/utils.gd")
 const NodePaths = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/node_paths.gd")
+const Cancel = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/cancel.gd")
 const ExitCode = Types.ExitCode
 static var _clean_output_regex:RegEx
 
@@ -64,6 +65,10 @@ var _capture_err:int = 0
 var last_status:int = ExitCode.OK
 var exit_code:int = ExitCode.OK
 var exit_requested:=false
+## Shared by every ctx of a run (see cancel.gd). A session (made with Context.new) isn't a run:
+## each child of it starts a new one, so a cancelled submission never sticks to the console.
+var cancel_token:Cancel = Cancel.new()
+var _in_run := false
 
 
 var raw_text:String
@@ -233,6 +238,21 @@ static func plain_text(text:String) -> String:
 	return _clean_output_regex.sub(text, "", true).replace("[lb]", "[")
 
 
+## Stop this run (every ctx sharing its token) at the next check, e.g. from a console's Ctrl+C.
+func cancel(reason:String = "cancelled") -> void:
+	cancel_token.cancel(reason)
+
+
+func is_cancelled() -> bool:
+	return cancel_token.is_cancelled()
+
+
+## For long loops: `if await ctx.checkpoint(): return ExitCode.CANCELLED`. Yields a frame now
+## and then, so check that nodes are still valid after it.
+func checkpoint() -> bool:
+	return await cancel_token.checkpoint()
+
+
 func append_error(line:String) -> void:
 	_write(line, true, true)
 
@@ -254,6 +274,9 @@ func _write(text:String, is_error:bool, normalize:bool, emit:=true) -> void:
 	var chunk = text
 	if normalize:
 		chunk = text.trim_suffix("\n") + "\n"
+	# Counted once, where it is first written; absorbing a child's buffer doesn't count again.
+	if emit and not is_error and not cancel_token.add_output(chunk.length()):
+		return
 	if is_error:
 		stderr += chunk
 	else:
@@ -363,6 +386,9 @@ static func new_ctx(text:String, parent:Context=null, sub_shell:=false):
 		# The live channel and any capture in progress: a child created inside a pipe stage,
 		# a redirect, or `$(...)` inherits the suppression that applies to its parent.
 		ctx.output_sink = parent.output_sink
+		if parent._in_run:
+			ctx.cancel_token = parent.cancel_token
+		ctx._in_run = true
 		ctx._capture_out = parent._capture_out
 		ctx._capture_err = parent._capture_err
 

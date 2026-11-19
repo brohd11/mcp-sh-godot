@@ -59,7 +59,7 @@ func _execute(ctx:Context) -> int:
 		var node:Node = inputs[i]
 		var n_par = node.get_parent()
 		if n_par == null:
-			ctx.append_error("Cannot reorder a node with no parent: %s" % node.get_path())
+			ctx.append_error("Cannot reorder a node with no parent: %s" % TreeUtil.path_of(node))
 			continue
 		var count = n_par.get_child_count()
 		var targ = 0 if first_flag else (count - 1 if last_flag else target_i)
@@ -82,9 +82,9 @@ func _execute(ctx:Context) -> int:
 
 func _append_out(ctx:Context, node:Node, success:bool):
 	if success:
-		ctx.append_output("Moved Node: %s" % node.get_path())
+		ctx.append_output("Moved Node: %s" % TreeUtil.path_of(node))
 	else:
-		ctx.append_output("Could not move Node: %s" % node.get_path())
+		ctx.append_output("Could not move Node: %s" % TreeUtil.path_of(node))
 
 func _get_completions(completion:Completion):
 	if last_flag or first_flag:

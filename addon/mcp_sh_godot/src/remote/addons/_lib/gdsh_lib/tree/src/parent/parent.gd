@@ -19,19 +19,13 @@ func _execute(ctx:Context) -> int:
 	var nodes = TreeUtil.resolve_targets(ctx)
 	if nodes.is_empty():
 		return ExitCode.FAIL
-	
-	var inputs = ctx.stdin.split("\n", false)
-	if inputs.is_empty():
-		ctx.append_error("Must pass nodes via stdin.")
-		return ExitCode.FAIL
-	
-	for np in inputs:
-		np = np.trim_suffix("\n")
-		if np == "/root":
-			ctx.append_output("Cannot get root's parent.")
+	var failed := false
+	for n:Node in nodes:
+		var parent = n.get_parent()
+		if parent == null:
+			ctx.append_error("Cannot get root's parent.")
+			failed = true
 			continue
-		
-		ctx.append_output(np.get_base_dir())
-	
-	return ExitCode.OK
+		ctx.append_output(TreeUtil.path_of(parent))
+	return ExitCode.FAIL if failed else ExitCode.OK
 

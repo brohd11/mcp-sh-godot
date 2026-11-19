@@ -10,7 +10,7 @@ extends Node
 ##
 ## Newline-delimited JSON, one request per connection:
 ##   hello:  -> {name, version, commands: [{name, summary}]}
-##   invoke: {cmd, args, stdin} -> {stdout, stderr, exit_code}
+##   invoke: {cmd, args, stdin, timeout_ms?, max_output?} -> {stdout, stderr, exit_code}
 ##   help:   {cmd} -> {stdout}
 ## Errors are {"id", "error"}. The shell itself (pipes, loops, grep/jq...) runs in the
 ## mcp-sh-godot binary. Godot only lists its top-level commands and runs one at a time
@@ -239,7 +239,7 @@ func _serve(peer:StreamPeerTCP, line:String) -> void:
 	if json.parse(line) != OK or not (json.data is Dictionary):
 		resp = {"id": null, "error": "Invalid JSON request"}
 	else:
-		resp = await _handle_request(json.data)
+		resp = await _handle_request(json.data, peer)
 
 	var payload := JSON.stringify(resp) + "\n"
 	peer.poll() # The client may have given up while the command ran.
@@ -249,7 +249,7 @@ func _serve(peer:StreamPeerTCP, line:String) -> void:
 	_in_flight -= 1
 
 
-func _handle_request(req:Dictionary) -> Dictionary:
+func _handle_request(req:Dictionary, peer:StreamPeerTCP = null) -> Dictionary:
 	var id = req.get("id", null)
 	if token != "" and str(req.get("token", "")) != token:
 		return {"id": id, "error": "Unauthorized"}
@@ -282,7 +282,16 @@ func _handle_request(req:Dictionary) -> Dictionary:
 			var argv := [cmd]
 			for arg in args:
 				argv.append(str(arg))
-			var out:Dictionary = await current.host_run(argv, str(req.get("stdin", "")))
+			# Queued behind a long command, the client may have given up already.
+			if peer != null and _peer_gone(peer):
+				return {"id": id, "error": "client disconnected"}
+			var stdin := str(req.get("stdin", ""))
+			var opts := _run_options(req, peer)
+			var out:Dictionary
+			if Callable(current, &"host_run").get_argument_count() >= 3:
+				out = await current.host_run(argv, stdin, opts)
+			else: # A host without cancellation support.
+				out = await current.host_run(argv, stdin)
 			return {
 				"id": id,
 				"stdout": out.get("stdout", ""),
@@ -290,6 +299,27 @@ func _handle_request(req:Dictionary) -> Dictionary:
 				"exit_code": out.get("exit_code", 0),
 			}
 	return {"id": id, "error": "Unknown method: " + method}
+
+
+## Cancellation for host_run: mcp-sh's per-command deadline and output cap when it sends them,
+## and the client hanging up (it closes the connection when it gives up). A host checks these
+## at its checkpoints; nothing times out unless the request asks.
+func _run_options(req:Dictionary, peer:StreamPeerTCP) -> Dictionary:
+	var opts := {}
+	var timeout_ms := int(req.get("timeout_ms", 0))
+	if timeout_ms > 0:
+		opts["timeout_ms"] = timeout_ms
+	var max_output := int(req.get("max_output", 0))
+	if max_output > 0:
+		opts["max_output"] = max_output
+	if peer != null:
+		opts["cancel_check"] = func(): return "client disconnected" if _peer_gone(peer) else ""
+	return opts
+
+
+static func _peer_gone(peer:StreamPeerTCP) -> bool:
+	peer.poll()
+	return peer.get_status() != StreamPeerTCP.STATUS_CONNECTED
 
 
 ## Top-level commands for the hello response: [{name, summary}].
