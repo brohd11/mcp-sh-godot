@@ -107,7 +107,7 @@ func _execute(ctx:Context):
 				continue
 			if not include_commented_flag and _is_commented(line, match_idx):
 				continue
-			ctx.append_output("[url=%s:%s]%s:%s[/url]:%s" % [path, line_no, path, line_no, line.strip_edges()])
+			ctx.append_output("%s:%s:%s" % [path, line_no, line.strip_edges()])
 			hits += 1
 
 	if hits == 0:

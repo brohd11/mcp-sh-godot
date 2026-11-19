@@ -29,8 +29,8 @@ func _get_flags():
 	options.add_option("--default", {
 		&"help": "Create default value arguments when calling the method."
 	})
-	options.add_option("--inherited", {&"help": "Include methods from base scripts."})
-	options.add_option("--engine", {&"help": "Include base scripts and engine methods."})
+	options.add_option("--inherited", {&"help": "Complete methods from base scripts (an exact name runs without it)."})
+	options.add_option("--engine", {&"help": "Complete base script and engine methods (an exact name runs without it)."})
 	return options.get_options()
 
 func _process_flag(flag:String):
@@ -74,6 +74,9 @@ func _execute(ctx:Context):
 		return ExitCode.FAIL
 
 	var methods = TargetUtil.get_methods_from_ctx(ctx, show_private, true, inherited, engine)
+	# The selectors narrow completion; a typed name is already a deliberate choice. Private stays gated.
+	if not method_name in methods:
+		methods = TargetUtil.get_methods_from_ctx(ctx, show_private, true, true, true)
 	if not method_name in methods:
 		ctx.append_error("Unrecognized method: " + method_name)
 		return ExitCode.FAIL

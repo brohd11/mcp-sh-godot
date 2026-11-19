@@ -67,10 +67,46 @@ func _ready():
 - Without a host it serves gdsh's builtins, which work on the live tree. Use
   `GDSh.Host.new({"command_dirs": ["res://game/commands"]})` for the game's own commands.
 
+## Custom commands
+
+Commands are gdsh scripts. In the editor, the addon and Editor Console read
+`~/.mcp-sh/godot/commands/` and `res://.mcp-sh/godot/commands/` without any config, then the
+folders in `commandDirs` (see below). A game's own bridge reads none of them unless its code
+asks (`add_commands_to(host, true)`). A command is `name.gd` or `name/name.gd`, and its subcommands go in folders beside it
+(`tools/tools.gd`, `tools/bake/bake.gd` for `tools bake`). mcp-sh ignores `.gd` files, so these
+folders don't clash with its script commands.
+
+```sh
+mcp-sh-godot gdsh new hello               # ~/.mcp-sh/godot/commands/hello/hello.gd
+mcp-sh-godot gdsh new tools bake          # tools/bake/bake.gd, plus a tools/tools.gd parent
+mcp-sh-godot gdsh new hello --project     # <project>/.mcp-sh/godot/commands/
+mcp-sh-godot gdsh new hello --dir ~/my-lib
+mcp-sh-godot gdsh add ~/my-lib            # a library folder, into bridge.json commandDirs
+mcp-sh-godot gdsh dirs                    # what the bridge reads, in order
+```
+
+Folders outside `res://`, and those in `res://.mcp-sh/`, are read on every request: a new
+command is there without restarting the bridge, and edits apply on the next run. A command
+that fails to load is still listed, and running it prints why: the file, line and parse error
+on Godot 4.5+ (older versions point to Godot's Output panel). A request whose subcommand failed
+to load ends with a note naming it.
+
+Commands extend `"res://addons/_lib/gdsh/src/core/command_base.gd"`. The bridge swaps that
+path, when it loads them, for the gdsh copy it runs (the addon's, Editor Console's or the
+library's), so one file works with all three. So a command:
+
+- extends `command_base.gd` directly, not a base of your own;
+- reaches the library through the constants it inherits (`Context`, `Options`, `Utils`,
+  `Paths`, `ExitCode`), not its own preloads;
+- doesn't override `_init`;
+- declares `&"positional_count"` (for example `"min:0"`) if it takes arguments, since the
+  default is none.
+
 ## Bridge config
 
 Editor Console and the addon read `~/.mcp-sh/godot/bridge.json`, then
-`res://.mcp-sh/godot/bridge.json`. Later files win, and `commandDirs`/`exclude` add up. Use
+`res://.mcp-sh/godot/bridge.json`. Later files win, and `commandDirs`/`exclude` add up. Each
+file's `commands/` folder, beside it, is read before its `commandDirs`. Use
 Project > Tools > Restart mcp-sh-godot Bridge (or `mcp --stop; mcp --start` in Editor Console)
 after editing them. `autostart` and `gdshLib` are the addon's keys only.
 

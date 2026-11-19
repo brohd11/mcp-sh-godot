@@ -7,6 +7,11 @@ const Options = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/s
 
 const UClassDetail = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/util_r/src/object/class_detail.gd")
 
+## Scripts loaded from outside the project, by path: [source hash, script]. Kept like res://
+## scripts are in Godot's cache, so timers, signals and lambdas a call leaves behind outlive it
+## (a freed script's lambdas crash when called). Rebuilt when the file changes.
+static var _outside_scripts := {}
+
 const USAGE_TEMPLATE = \
 "Usage: script <class|path.gd> %s
 Usage: node <node path> %s"
@@ -39,9 +44,18 @@ static func _load_script(path:String):
 		return resource if resource is Script else null
 	if not FileAccess.file_exists(path):
 		return null
+	var source = FileAccess.get_file_as_string(path)
+	var cached = _outside_scripts.get(path)
+	if cached != null and cached[0] == source.hash():
+		return cached[1]
 	var script = GDScript.new()
-	script.source_code = FileAccess.get_file_as_string(path)
-	return script if script.reload() == OK else null
+	script.source_code = source
+	# Without a path, relative preloads/extends resolve against gdscript:// and fail.
+	script.set_path_cache(path)
+	if script.reload() != OK:
+		return null
+	_outside_scripts[path] = [source.hash(), script]
+	return script
 
 
 static func resolve_access_path(access_path:String, ctx=null):

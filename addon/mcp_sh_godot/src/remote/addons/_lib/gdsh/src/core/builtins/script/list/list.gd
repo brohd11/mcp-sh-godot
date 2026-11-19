@@ -120,12 +120,25 @@ func list_members(ctx:Context, script) -> int:
 		var members = TargetUtil.get_members(script, flag_raw, private_flag, inh_flag, engine_flag)
 		ctx.append_output("%s %s:" % ["Node" if script is Node else "Script", flag_raw])
 
-		_add_to_members_to_output(ctx, members, pr)
+		_add_to_members_to_output(ctx, members, pr, _hidden_hints(script, flag_raw, members))
 
 	return ExitCode.OK
 
 
-func _add_to_members_to_output(ctx:Context, members:Dictionary, pr):
+## Points at the flag that would reveal members the current selection leaves out.
+func _hidden_hints(target, kind:String, members:Dictionary) -> Array[String]:
+	var hints:Array[String] = []
+	if not private_flag:
+		var hidden = TargetUtil.get_members(target, kind, true, inh_flag, engine_flag).size() - members.size()
+		if hidden > 0:
+			hints.append("(%d private hidden, use --private)" % hidden)
+	if not engine_flag and members.is_empty() and target is Node:
+		if not TargetUtil.get_members(target, kind, private_flag, inh_flag, true).is_empty():
+			hints.append("(use --engine for engine members)")
+	return hints
+
+
+func _add_to_members_to_output(ctx:Context, members:Dictionary, pr, hints:Array[String]=[]):
 	if members.is_empty():
 		var err_color = _ERROR_COLOR if pretty_flag else Color.TRANSPARENT
 		pr.append("\tNone on target.", err_color)
@@ -153,5 +166,7 @@ func _add_to_members_to_output(ctx:Context, members:Dictionary, pr):
 			else:
 				ctx.append_output("\t\t" + str(data))
 
+	for hint in hints:
+		ctx.append_output("\t" + hint)
 	ctx.append_output("")
 

@@ -1,10 +1,13 @@
 extends "res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/command_base.gd"
 
+const ErrorCapture = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/util_r/src/object/error_capture.gd")
+
 const _HELP = \
 "Validate that a script or scene loads, reporting 'path: OK' or 'path: ERROR (...)'.
 Path comes from the argument or from stdin (one per line, pipeable). Any failure
-sets a non-zero exit code. Note: GDScript only exposes an error code here, not
-per-line parse messages, so detail is limited.
+sets a non-zero exit code. A failing script is followed by its errors, one per
+line as 'file:line: message' (Godot 4.5+; earlier versions show them in Output).
+Scripts are checked as the file is now, even when an older version is loaded.
 Usage: check [path]   |   ... | check"
 
 static func get_command_name() -> String:
@@ -30,6 +33,8 @@ func _execute(ctx:Context):
 		if not result.ok:
 			any_failed = true
 			ctx.append_output(path + ": ERROR (" + result.message + ")")
+			for line in result.get("errors", PackedStringArray()):
+				ctx.append_output("  " + line)
 		else:
 			ctx.append_output(path + ": OK")
 
@@ -52,12 +57,17 @@ func _check_one(path:String) -> Dictionary:
 
 	var ext := path.get_extension().to_lower()
 	if ext == "gd":
-		var text := FileAccess.get_file_as_string(path)
+		# A copy is compiled from the file so edits are checked, not the loaded version. It gets
+		# the real path so class_name and relative preloads resolve as for the real script. But
+		# GDScript caches the first script compiled under a path, for good, so the real script is
+		# loaded first: the copy must never become what the path loads.
+		ResourceLoader.load(path, "GDScript") # Cached by GDScript, also when it has errors.
 		var script := GDScript.new()
-		script.source_code = text
-		var err := script.reload()
-		if err != OK:
-			return {"ok": false, "message": error_string(err)}
+		script.source_code = FileAccess.get_file_as_string(path)
+		script.set_path_cache(path)
+		var compiled = ErrorCapture.run(script.reload)
+		if compiled.result != OK:
+			return {"ok": false, "message": error_string(compiled.result), "errors": compiled.errors}
 		return {"ok": true, "message": ""}
 
 	# Scenes / resources: confirm the loader can produce a valid resource.

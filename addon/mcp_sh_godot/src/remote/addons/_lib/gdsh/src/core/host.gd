@@ -27,7 +27,11 @@ var cwn:String = ""
 
 var _options:Dictionary
 var _builtin_scopes = null
-var _added_scopes:Dictionary = {}
+## Added dirs and commands, in the order added (later ones win): {dir, scopes} or {name, script}.
+var _added:Array[Dictionary] = []
+## User command files that failed to load, under the name each would have: {name: {path, error}}.
+## Refreshed with the user directories, so they are offered and say why when run.
+var _broken:Dictionary = {}
 var _undo_session = null
 signal _turn_freed
 var _running := false
@@ -49,12 +53,13 @@ func _init(options:Dictionary = {}) -> void:
 
 
 ## Add a directory of commands (as GDSh.Load.load_directory). They replace the host's own
-## commands of the same name.
+## commands of the same name. A user directory (GDSh.Load.is_user_path) is listed again on
+## every request, so commands added to it later show up without a restart.
 func add_command_dir(dir:String) -> bool:
 	if not DirAccess.dir_exists_absolute(dir):
 		push_warning("GDSh.Host: command dir not found: " + dir)
 		return false
-	_added_scopes.merge(Load.load_directory(dir), true)
+	_added.append({"dir": dir, "scopes": Load.load_directory(dir)})
 	return true
 
 
@@ -65,14 +70,66 @@ func add_command(path:String, name:String = "") -> bool:
 		return false
 	if name.is_empty():
 		name = script.get_command_name()
-	_added_scopes[name] = {Types.ScopeDataKeys.SCRIPT: script}
+	_added.append({"name": name, "script": script})
 	return true
+
+
+## The added commands by name, user directories listed fresh (which also refreshes _broken).
+func _get_added_scopes() -> Dictionary:
+	var scopes = {}
+	var broken = {}
+	for entry in _added:
+		if entry.has("name"):
+			scopes[entry.name] = {Types.ScopeDataKeys.SCRIPT: entry.script}
+		elif Load.is_user_path(entry.dir):
+			if DirAccess.dir_exists_absolute(entry.dir):
+				scopes.merge(Load.load_directory(entry.dir), true)
+				var errors = Load.user_build_errors(entry.dir)
+				for path in errors:
+					var name = _command_file_name(entry.dir, path)
+					if not name.is_empty():
+						broken[name] = {"path": path, "error": errors[path]}
+		else:
+			scopes.merge(entry.scopes, true)
+	for name in scopes:
+		broken.erase(name)
+	_broken = broken
+	return scopes
+
+
+## The command a file in dir would be (dir/name.gd or dir/name/name.gd), or "" for others.
+static func _command_file_name(dir:String, path:String) -> String:
+	var rel = path.trim_prefix(dir.trim_suffix("/") + "/")
+	var parts = rel.split("/")
+	if parts.size() == 1 and rel.ends_with(".gd") and rel != "manifest.gd":
+		return rel.get_basename()
+	if parts.size() == 2 and parts[1] == parts[0] + ".gd":
+		return parts[0]
+	return ""
+
+
+func _broken_result(name:String) -> Dictionary:
+	var info = _broken[name]
+	var text = "%s: %s failed to load:\n%s\n" % [name, info.path, info.error]
+	return {"stdout": "", "stderr": text, "exit_code": Types.ExitCode.ERR}
+
+
+## Failed user files under a user command's folder (its subcommands), as notes for stderr.
+static func _broken_notes(scope) -> String:
+	var script = scope.get(Types.ScopeDataKeys.SCRIPT) if scope is Dictionary else null
+	if not script is GDScript or script.resource_path.is_empty() or not Load.is_user_path(script.resource_path):
+		return ""
+	var notes = ""
+	var errors = Load.user_build_errors(script.resource_path.get_base_dir())
+	for path in errors:
+		notes += "note: %s failed to load:\n%s\n" % [path, errors[path]]
+	return notes
 
 
 ## Every command offered, by name: {name: scope data}. Names starting with "__" are internal.
 func get_scopes() -> Dictionary:
 	var scopes:Dictionary = _get_scopes().duplicate()
-	scopes.merge(_added_scopes, true)
+	scopes.merge(_get_added_scopes(), true)
 	for name in scopes.keys():
 		if str(name).begins_with("__"):
 			scopes.erase(name)
@@ -83,9 +140,7 @@ func get_scopes() -> Dictionary:
 func host_commands() -> Array:
 	var commands = []
 	var scopes = get_scopes()
-	var names = scopes.keys()
-	names.sort()
-	for name in names:
+	for name in scopes:
 		var command = _instance(scopes[name])
 		if command == null:
 			continue
@@ -94,6 +149,9 @@ func host_commands() -> Array:
 			"name": name,
 			"summary": help.get_slice("\n", 0) if help is String else "",
 		})
+	for name in _broken:
+		commands.append({"name": name, "summary": "failed to load: run it to see why"})
+	commands.sort_custom(func(a, b): return str(a.name) < str(b.name))
 	return commands
 
 
@@ -102,7 +160,7 @@ func host_commands() -> Array:
 func host_help(name:String) -> String:
 	var command = _instance(get_scopes().get(name))
 	if command == null:
-		return ""
+		return _broken_result(name).stderr.strip_edges() if _broken.has(name) else ""
 	var result = await host_run([name, "--help"])
 	var text = str(result.get("stdout", "")).strip_edges()
 	var tree = {}
@@ -119,7 +177,10 @@ func host_help(name:String) -> String:
 ## argv[0] is the command name; `stdin` is what it reads as piped input. Output is plain text
 ## (no BBCode). Returns {stdout, stderr, exit_code}.
 func host_run(argv:Array, stdin:String = "") -> Dictionary:
-	if argv.is_empty() or _instance(get_scopes().get(str(argv[0]))) == null:
+	var scopes = get_scopes()
+	if not argv.is_empty() and _broken.has(str(argv[0])):
+		return _broken_result(str(argv[0]))
+	if argv.is_empty() or _instance(scopes.get(str(argv[0]))) == null:
 		var shown = str(argv[0]) if not argv.is_empty() else ""
 		return {"stdout": "", "stderr": "Unknown command: %s\n" % shown, "exit_code": Types.ExitCode.ERR}
 	var work = func():
@@ -127,15 +188,21 @@ func host_run(argv:Array, stdin:String = "") -> Dictionary:
 		if not cwd.is_empty(): root.cwd = cwd
 		if not cwn.is_empty(): root.cwn = cwn
 		var ctx = Context.new_ctx("Host request", root)
-		ctx.scopes.merge(_added_scopes, true)
+		ctx.scopes.merge(_get_added_scopes(), true)
 		ctx.stdin = stdin
 		await Execute.execute_argv(argv, ctx)
 		# `cd` and `cn` propagate up to the root.
 		cwd = root.cwd
 		cwn = root.cwn
+		var stderr = Context.plain_text(ctx.stderr)
+		# A broken subcommand otherwise reads as an unknown one.
+		if ctx.exit_code != Types.ExitCode.OK:
+			var notes = _broken_notes(ctx.scopes.get(str(argv[0])))
+			if not notes.is_empty():
+				stderr += ("" if stderr.is_empty() or stderr.ends_with("\n") else "\n") + notes
 		return {
 			"stdout": Context.plain_text(ctx.stdout),
-			"stderr": Context.plain_text(ctx.stderr),
+			"stderr": stderr,
 			"exit_code": ctx.exit_code,
 		}
 	return await _run_serialized(work)

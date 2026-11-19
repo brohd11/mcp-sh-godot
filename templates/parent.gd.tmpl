@@ -1,0 +1,17 @@
+extends "res://addons/_lib/gdsh/src/core/command_base.gd"
+## `{{.Usage}}`: groups the subcommands in the folders beside this file (name/name.gd). Run on
+## its own, it prints its help and lists them.
+## The extends path is swapped when the command loads, for whichever gdsh copy is running, so
+## leave it as it is.
+
+const _HELP = \
+"TODO: one-line summary of the {{.Name}} commands.
+Usage: {{.Usage}} <subcommand>"
+
+
+static func get_command_name() -> String:
+	return "{{.Name}}"
+
+
+static func get_self_command_data() -> Dictionary:
+	return _command_data({&"help": _HELP})
