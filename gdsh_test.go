@@ -128,7 +128,7 @@ func TestGdshNewFolders(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(lib, "y", "y.gd")); err != nil {
 		t.Error(err)
 	}
-	if !strings.Contains(out, "mcp-sh-godot gdsh add "+lib) {
+	if !strings.Contains(out, "mcp_sh_godot gdsh add "+lib) {
 		t.Errorf("--dir output: %q", out)
 	}
 	gdsh(t, "add", "lib")

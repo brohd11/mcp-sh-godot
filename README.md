@@ -7,14 +7,14 @@ on [mcp-sh](https://github.com/brohd11/mcp-sh). Godot serves its commands throug
 [gdsh](https://github.com/brohd11/godot-gdsh) commands with pipes, loops and jq.
 
 ```sh
-mcp-sh-godot run 'tree root | tree nodes --recursive | grep -c Camera'
+mcp_sh_godot run 'tree root | tree nodes --recursive | grep -c Camera'
 ```
 
 ## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.sh | sh
-mcp-sh-godot setup        # ~/.mcp-sh/godot/ + prints the claude/codex mcp add commands
+mcp_sh_godot setup        # ~/.mcp-sh/godot/ + prints the claude/codex mcp add commands
 ```
 
 On Windows: `irm https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.ps1 | iex`.
@@ -29,16 +29,16 @@ Then, in each Godot project, one of:
   gdsh, and gdsh_lib's utils, tree and editor commands), so nothing else is installed:
 
   ```sh
-  mcp-sh-godot addon install    # writes res://addons/mcp_sh_godot/
-  mcp-sh-godot addon status     # installed vs carried addon version, editor_console
+  mcp_sh_godot addon install    # writes res://addons/mcp_sh_godot/
+  mcp_sh_godot addon status     # installed vs carried addon version, editor_console
   ```
 
   Enable **mcp-sh-godot** in Project Settings > Plugins. It listens while the editor is open and
   offers gdsh's commands plus `ls`, `cat`, `find`, `tree`, `editor`, `settings` and `resource`.
-  Run `mcp-sh-godot addon install` again after `mcp-sh-godot update`. `addon remove` takes it
+  Run `mcp_sh_godot addon install` again after `mcp_sh_godot update`. `addon remove` takes it
   out. If Editor Console is enabled, the addon disables itself.
 
-Either way, commands from `bridge.json` are added. `mcp-sh-godot commands` checks what the shell
+Either way, commands from `bridge.json` are added. `mcp_sh_godot commands` checks what the shell
 can reach.
 
 Commands get their arguments exactly as bash passed them: no gdsh quoting, variables or
@@ -48,7 +48,7 @@ aliases apply. `cd` and `pwd` are gdsh's (mcp-sh hands bash's to them), as are `
 ## In a running game
 
 The bridge is a node from the mcp_sh_bridge package, so a game or app adds it the way the plugin
-does. It doesn't need this addon. Then register the `mcp-sh-godot-game` entry that `setup` (and
+does. It doesn't need this addon. Then register the `mcp_sh_godot_game` entry that `setup` (and
 `--help`) prints for each agent; it sets `MCP_SH_GODOT_PORT=9511`.
 
 ```gdscript
@@ -77,12 +77,12 @@ asks (`add_commands_to(host, true)`). A command is `name.gd` or `name/name.gd`, 
 folders don't clash with its script commands.
 
 ```sh
-mcp-sh-godot gdsh new hello               # ~/.mcp-sh/godot/commands/hello/hello.gd
-mcp-sh-godot gdsh new tools bake          # tools/bake/bake.gd, plus a tools/tools.gd parent
-mcp-sh-godot gdsh new hello --project     # <project>/.mcp-sh/godot/commands/
-mcp-sh-godot gdsh new hello --dir ~/my-lib
-mcp-sh-godot gdsh add ~/my-lib            # a library folder, into bridge.json commandDirs
-mcp-sh-godot gdsh dirs                    # what the bridge reads, in order
+mcp_sh_godot gdsh new hello               # ~/.mcp-sh/godot/commands/hello/hello.gd
+mcp_sh_godot gdsh new tools bake          # tools/bake/bake.gd, plus a tools/tools.gd parent
+mcp_sh_godot gdsh new hello --project     # <project>/.mcp-sh/godot/commands/
+mcp_sh_godot gdsh new hello --dir ~/my-lib
+mcp_sh_godot gdsh add ~/my-lib            # a library folder, into bridge.json commandDirs
+mcp_sh_godot gdsh dirs                    # what the bridge reads, in order
 ```
 
 Folders outside `res://`, and those in `res://.mcp-sh/`, are read on every request: a new
@@ -146,7 +146,7 @@ project). See the mcp-sh README for the config keys.
 ## Development
 
 ```sh
-make           # host build -> build/<os>-<arch>/mcp-sh-godot
+make           # host build -> build/<os>-<arch>/mcp_sh_godot
 make test
 make package   # release archives for every platform
 ```

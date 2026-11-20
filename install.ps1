@@ -1,4 +1,4 @@
-# Install mcp-sh-godot into %LOCALAPPDATA%\bin.
+# Install mcp_sh_godot into %LOCALAPPDATA%\bin.
 #
 #   irm https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.ps1 | iex
 #
@@ -14,7 +14,7 @@
 
 # ---- config ----
 $Repo       = 'brohd11/mcp-sh-godot'
-$Binary     = 'mcp-sh-godot'
+$Binary     = 'mcp_sh_godot'
 $ArchiveExt = 'zip'                                # zip | tar.gz
 $Supported  = 'windows-amd64'
 

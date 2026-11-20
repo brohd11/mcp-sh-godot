@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install mcp-sh-godot into ~/.local/bin.
+# Install mcp_sh_godot into ~/.local/bin.
 #
 #   curl -fsSL https://raw.githubusercontent.com/brohd11/mcp-sh-godot/main/install.sh | sh
 #
@@ -15,7 +15,7 @@ set -eu
 
 # ---- config ----
 REPO="brohd11/mcp-sh-godot"
-BINARY="mcp-sh-godot"
+BINARY="mcp_sh_godot"
 ARCHIVE_EXT="zip"
 SUPPORTED="darwin-arm64 darwin-amd64 linux-amd64 linux-arm64"
 

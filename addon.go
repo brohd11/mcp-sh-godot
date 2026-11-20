@@ -14,7 +14,7 @@ import (
 	"github.com/brohd11/mcp-sh"
 )
 
-// addonFS is the editor addon, written into a project by `mcp-sh-godot addon install`. It is
+// addonFS is the editor addon, written into a project by `mcp_sh_godot addon install`. It is
 // the released export of github.com/brohd11/godot-mcp-sh-plugin, which bundles every library it
 // uses, vendored by scripts/fetch_addon.sh (`go generate`) and committed.
 //
@@ -55,7 +55,7 @@ func addonCommand(version string) mcpsh.Subcommand {
 
 func runAddon(version string, args []string, stdout, stderr io.Writer) int {
 	usage := func() int {
-		fmt.Fprintf(stderr, "usage: mcp-sh-godot %s\n", addonUsage)
+		fmt.Fprintf(stderr, "usage: mcp_sh_godot %s\n", addonUsage)
 		return 2
 	}
 	if len(args) == 0 {
@@ -125,7 +125,7 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 				return fmt.Errorf("%s exists but is not the mcp-sh-godot addon; use --force to replace it", dest)
 			}
 		case compareVersions(installed, version) > 0 && !force:
-			return fmt.Errorf("installed addon %s is newer than the one this binary carries (%s); update mcp-sh-godot, or use --force", installed, version)
+			return fmt.Errorf("installed addon %s is newer than the one this binary carries (%s); update mcp_sh_godot, or use --force", installed, version)
 		}
 	}
 	keep := map[string]bool{}
@@ -184,11 +184,11 @@ func addonStatus(project, binary, embedded string, stdout io.Writer) {
 	dest := filepath.Join(project, addonDir)
 	switch name, installed, ok := readPluginCfg(dest); {
 	case !ok && !dirExists(dest):
-		fmt.Fprintf(stdout, "addon           not installed (this binary, %s, carries %s): mcp-sh-godot addon install\n", binary, embedded)
+		fmt.Fprintf(stdout, "addon           not installed (this binary, %s, carries %s): mcp_sh_godot addon install\n", binary, embedded)
 	case !ok || name != addonName:
 		fmt.Fprintf(stdout, "addon           res://%s is not the mcp-sh-godot addon\n", addonDir)
 	case installed != embedded:
-		fmt.Fprintf(stdout, "addon           %s, this binary carries %s: mcp-sh-godot addon install\n", installed, embedded)
+		fmt.Fprintf(stdout, "addon           %s, this binary carries %s: mcp_sh_godot addon install\n", installed, embedded)
 	default:
 		fmt.Fprintf(stdout, "addon           %s (matches this binary's)\n", installed)
 	}

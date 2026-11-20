@@ -29,16 +29,16 @@ const (
 	gdshUsage   = "gdsh new|add|remove|dirs ...  (gdsh --help)"
 	gdshSummary = "Write gdsh commands for the editor bridge, and manage the folders it reads them from"
 	gdshHelp    = `usage:
-  mcp-sh-godot gdsh new NAME [SUB...] [--project | --dir DIR] [--force]
+  mcp_sh_godot gdsh new NAME [SUB...] [--project | --dir DIR] [--force]
       Write a command script. Name it as it is typed: 'gdsh new tools bake' writes
       tools/bake/bake.gd, the 'bake' subcommand of 'tools', and a tools/tools.gd parent if
       there is none. It goes in ~/.mcp-sh/godot/commands, or this project's
       .mcp-sh/godot/commands (--project), or any folder (--dir). --force replaces the command.
-  mcp-sh-godot gdsh add DIR [--project]
-  mcp-sh-godot gdsh remove DIR [--project]
+  mcp_sh_godot gdsh add DIR [--project]
+  mcp_sh_godot gdsh remove DIR [--project]
       Add or remove a folder of commands (a library) in bridge.json's commandDirs: the user
       file, or this project's (--project).
-  mcp-sh-godot gdsh dirs
+  mcp_sh_godot gdsh dirs
       List the folders the bridge reads, in order (later ones win on a name clash).
 
 The bridge reads ~/.mcp-sh/godot/commands and res://.mcp-sh/godot/commands without config,
@@ -205,9 +205,9 @@ func gdshNew(args []string, stdout io.Writer) error {
 	}
 
 	if !gdshFolderRead(folder) {
-		fmt.Fprintf(stdout, "The bridge doesn't read %s yet. Add it with: mcp-sh-godot gdsh add %s\n", folder, folder)
+		fmt.Fprintf(stdout, "The bridge doesn't read %s yet. Add it with: mcp_sh_godot gdsh add %s\n", folder, folder)
 	}
-	fmt.Fprintf(stdout, "Fill in its help and _execute, then check it through mcp-sh-godot: %s --help\n", strings.Join(names, " "))
+	fmt.Fprintf(stdout, "Fill in its help and _execute, then check it through mcp_sh_godot: %s --help\n", strings.Join(names, " "))
 	fmt.Fprintln(stdout, "(A bridge that read its folders only at startup lists a new command after a restart.)")
 	return nil
 }

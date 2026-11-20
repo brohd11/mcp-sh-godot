@@ -1,5 +1,5 @@
 // mcp-sh-godot: a sandboxed bash shell over Godot, served over MCP.
-// See `mcp-sh-godot --help` and the README.
+// See `mcp_sh_godot --help` and the README.
 package main
 
 import (
@@ -18,7 +18,7 @@ var version = "dev"
 
 func main() {
 	mcpsh.Main(mcpsh.Config{
-		Name:        "mcp-sh-godot",
+		Name:        "mcp_sh_godot",
 		App:         "godot",
 		Version:     version,
 		UpdateRepo:  "brohd11/mcp-sh-godot",
@@ -26,7 +26,7 @@ func main() {
 		Subcommands: []mcpsh.Subcommand{addonCommand(version), gdshCommand()},
 		// A running game serves its own bridge on 9511 (bridge.gd RUNTIME_PORT).
 		Registrations: []mcpsh.Registration{{
-			Suffix: "-game",
+			Suffix: "_game",
 			Env:    map[string]string{"MCP_SH_GODOT_PORT": "9511"},
 			Label:  "running game",
 		}},
