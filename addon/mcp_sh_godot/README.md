@@ -12,7 +12,7 @@ Install it with the binary, so the two match, then enable **mcp-sh-godot** in Pr
 Plugins:
 
 ```sh
-mcp-sh-godot addon install
+mcp_sh_godot addon install
 ```
 
 With [Editor Console](https://github.com/brohd11/Godot-Editor-Console) you don't need this
