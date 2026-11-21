@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/brohd11/mcp-sh/profile"
@@ -40,5 +42,16 @@ func TestEnvExpansion(t *testing.T) {
 	// Raw keeps the reference, so `config show` never prints the secret.
 	if l.Raw.Host.Token != "${MCP_SH_GODOT_TOKEN}" {
 		t.Fatalf("raw: %q", l.Raw.Host.Token)
+	}
+}
+
+func TestProjectFoundFromSubfolder(t *testing.T) {
+	game := t.TempDir()
+	os.WriteFile(filepath.Join(game, "project.godot"), nil, 0o644)
+	scenes := filepath.Join(game, "scenes", "enemies")
+	os.MkdirAll(scenes, 0o755)
+	o := profile.Options{ConfigDir: t.TempDir(), ProjectMarkers: projectMarkers}
+	if got, found := profile.FindProject(scenes, o); got != game || !found {
+		t.Fatalf("got %s %v, want %s", got, found, game)
 	}
 }
