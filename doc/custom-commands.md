@@ -30,9 +30,29 @@ mcp_sh_godot gdsh add ~/my-lib            # a library folder, into bridge.json c
 mcp_sh_godot gdsh dirs                    # what the bridge reads, in order
 ```
 
-`gdsh target` stores `newCommands` (`mcp-sh` or `gdsh`) in `~/.mcp-sh/godot/bridge.json`.
-Pick `gdsh` if you also use Editor Console, so its prompt has the same commands. Keep
-`mcp-sh` if you only use the agent.
+`gdsh target` stores `gdshRoot` (`mcp-sh` or `gdsh`) in `~/.mcp-sh/godot/bridge.json`. It
+picks where `gdsh new` and `gdsh install` write. Pick `gdsh` if you also use Editor Console,
+so its prompt has the same commands. Keep `mcp-sh` if you only use the agent.
+
+## Command packages
+
+Reviewed packages are listed in
+[godot-gdsh-lib-manifest](https://github.com/brohd11/godot-gdsh-lib-manifest). Each one is
+pinned to a reviewed commit, and installs download exactly that commit:
+
+```sh
+mcp_sh_godot gdsh search                 # what's available, what each needs
+mcp_sh_godot gdsh install terrain3d      # and level, which it needs, beside it
+mcp_sh_godot gdsh packages               # installed, with newer pinned versions
+mcp_sh_godot gdsh update                 # every outdated package
+mcp_sh_godot gdsh uninstall terrain3d
+```
+
+- Packages go in `<root>/packages/<name>`, and the bridge lists them on its next request.
+  `--project` uses the project's root and `--dir ROOT` any root.
+- A package that needs non-gdsh code (gdsh_lib utils needs util_r) can't live in a root.
+  Install it into the project with `gdaddon install` instead.
+- `GDSH_PACKAGE_INDEX` points at another index, as a URL or a local `manifest.json`.
 
 Folders outside `res://`, and the `res://.gdsh/` and `res://.mcp-sh/` roots, reload on every
 request. New commands

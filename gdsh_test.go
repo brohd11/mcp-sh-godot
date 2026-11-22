@@ -241,8 +241,8 @@ func TestGdshTarget(t *testing.T) {
 		t.Error(err)
 	}
 
-	os.WriteFile(bridge, []byte(`{"newCommands": "elsewhere"}`), 0o644)
-	if _, errOut, code := gdsh(t, "new", "x"); code != 1 || !strings.Contains(errOut, "newCommands must be") {
+	os.WriteFile(bridge, []byte(`{"gdshRoot": "elsewhere"}`), 0o644)
+	if _, errOut, code := gdsh(t, "new", "x"); code != 1 || !strings.Contains(errOut, "gdshRoot must be") {
 		t.Errorf("invalid stored target: %d %q", code, errOut)
 	}
 }

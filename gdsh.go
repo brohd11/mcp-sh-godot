@@ -21,26 +21,39 @@ import (
 // gdsh commands are GDScript files the editor bridge (the addon's, or Editor Console's) loads
 // from folders: gdsh's shared ~/.gdsh and res://.gdsh roots, then each config layer's folder as
 // a root, then bridge.json's commandDirs. A root holds commands/ and packages/<name>/cmd. This
-// subcommand writes commands from templates and edits commandDirs and newCommands.
+// subcommand writes commands from templates and edits commandDirs and gdshRoot.
 
 //go:embed templates/*.gd.tmpl
 var gdshTemplates embed.FS
 
 const (
-	gdshUsage   = "gdsh new|add|remove|dirs|target ...  (gdsh --help)"
-	gdshSummary = "Write gdsh commands for the editor bridge, and manage the folders it reads them from"
+	gdshUsage   = "gdsh new|search|install|packages|update|uninstall|add|remove|dirs|target ...  (gdsh --help)"
+	gdshSummary = "Write and install gdsh commands for the editor bridge, and manage the folders it reads them from"
 	gdshHelp    = `usage:
   mcp_sh_godot gdsh new NAME [SUB...] [--project | --dir DIR] [--force]
       Write a command script. Name it as it is typed: 'gdsh new tools bake' writes
       tools/bake/bake.gd, the 'bake' subcommand of 'tools', and a tools/tools.gd parent if
-      there is none. It goes in the user commands folder that 'gdsh target' picks, or this
-      project's (--project), or any folder (--dir). --force replaces the command.
+      there is none. It goes in the commands/ folder of the root 'gdsh target' picks, or of
+      this project's root (--project), or in any folder (--dir). --force replaces the command.
+  mcp_sh_godot gdsh search [TERM] [--refresh]
+      List the reviewed command packages (godot-gdsh-lib-manifest), with what they need and
+      whether they are installed.
+  mcp_sh_godot gdsh install NAME... [--project | --dir ROOT] [--force] [--refresh]
+      Install packages and the packages they need into the root's packages/ folder, at the
+      versions the index pins. --force reinstalls current ones.
+  mcp_sh_godot gdsh packages [--project | --dir ROOT]
+      List installed packages, and newer pinned versions.
+  mcp_sh_godot gdsh update [NAME...] [--project | --dir ROOT]
+      Update the named packages, or every outdated one.
+  mcp_sh_godot gdsh uninstall NAME [--project | --dir ROOT] [--force]
+      Remove a package; --force even when an installed package needs it.
   mcp_sh_godot gdsh target [mcp-sh|gdsh]
-      Show or set where 'gdsh new' writes (newCommands in ~/.mcp-sh/godot/bridge.json):
-        mcp-sh  ~/.mcp-sh/godot/commands, --project: .mcp-sh/godot/commands (default).
-                Only the MCP bridge reads these.
-        gdsh    ~/.gdsh/commands ($GDSH_HOME), --project: .gdsh/commands.
-                Editor Console reads these too.
+      Show or set the root 'gdsh new' and 'gdsh install' use (gdshRoot in
+      ~/.mcp-sh/godot/bridge.json):
+        mcp-sh  ~/.mcp-sh/godot, --project: .mcp-sh/godot (default).
+                Only the MCP bridge reads it.
+        gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh.
+                Editor Console reads it too.
   mcp_sh_godot gdsh add DIR [--project]
   mcp_sh_godot gdsh remove DIR [--project]
       Add or remove a folder of commands (a library) in bridge.json's commandDirs: the user
@@ -60,7 +73,7 @@ the gdsh copy it runs, so the same file works with the addon, Editor Console or 
 	gdshPackagesDir = "packages"
 	bridgeFileName  = "bridge.json"
 
-	targetKey     = "newCommands"
+	targetKey     = "gdshRoot"
 	targetMcpSh   = "mcp-sh"
 	targetGdsh    = "gdsh"
 	targetDefault = targetMcpSh
@@ -125,6 +138,8 @@ func runGdsh(args []string, stdout, stderr io.Writer) int {
 		err = gdshEditDirs(args[0], args[1:], stdout)
 	case "target":
 		err = gdshTarget(args[1:], stdout)
+	case "search", "install", "packages", "update", "uninstall":
+		err = gdshPackages(args[0], args[1:], stdout)
 	case "dirs":
 		if len(args) > 1 {
 			err = usageError("dirs takes no arguments")
@@ -411,7 +426,7 @@ func gdshEditDirs(sub string, args []string, stdout io.Writer) error {
 	return nil
 }
 
-// readTarget is newCommands from the user bridge.json, or the default.
+// readTarget is gdshRoot from the user bridge.json, or the default.
 func readTarget() (string, error) {
 	cfg, err := readBridgeConfig(userLayer().bridgeFile())
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -428,21 +443,26 @@ func readTarget() (string, error) {
 	return target, nil
 }
 
-// targetFolder is where 'gdsh new' writes for a target: the user folder, or with a project
-// folder that project's. "" when ~/.gdsh has no home folder.
-func targetFolder(target, project string) string {
+// targetRoot is the command root a target picks: the user one, or with a project folder that
+// project's. "" when ~/.gdsh has no home folder.
+func targetRoot(target, project string) string {
 	switch {
 	case target == targetGdsh && project != "":
-		return filepath.Join(project, ".gdsh", gdshCommandsDir)
+		return filepath.Join(project, ".gdsh")
 	case target == targetGdsh:
-		if home := gdshHome(); home != "" {
-			return filepath.Join(home, gdshCommandsDir)
-		}
-		return ""
+		return gdshHome()
 	case project != "":
-		return projectLayer(project).commandsDir()
+		return projectLayer(project).dir
 	}
-	return userLayer().commandsDir()
+	return userLayer().dir
+}
+
+// targetFolder is where 'gdsh new' writes for a target: its root's commands/.
+func targetFolder(target, project string) string {
+	if root := targetRoot(target, project); root != "" {
+		return filepath.Join(root, gdshCommandsDir)
+	}
+	return ""
 }
 
 func gdshTarget(args []string, stdout io.Writer) error {
@@ -455,8 +475,8 @@ func gdshTarget(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "%s: 'gdsh new' writes to %s (--project: <project>/%s)\n", target,
-			targetFolder(target, ""), filepath.ToSlash(targetFolder(target, ".")))
+		fmt.Fprintf(stdout, "%s: 'gdsh new' writes to %s and 'gdsh install' to %s (--project: <project>/%s)\n", target,
+			targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshPackagesDir), filepath.ToSlash(targetRoot(target, ".")))
 		return nil
 	}
 	target := args[0]
@@ -471,7 +491,8 @@ func gdshTarget(args []string, stdout io.Writer) error {
 	if err := cfg.write(path); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "Set %s to %s in %s: 'gdsh new' writes to %s\n", targetKey, target, path, targetFolder(target, ""))
+	fmt.Fprintf(stdout, "Set %s to %s in %s: 'gdsh new' writes to %s and 'gdsh install' to %s\n",
+		targetKey, target, path, targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshPackagesDir))
 	return nil
 }
 
