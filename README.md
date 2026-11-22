@@ -38,7 +38,7 @@ reviewed command packages you can add with `mcp_sh_godot gdsh install NAME`.
 In your Godot project folder, install the bundled addon:
 
 ```sh
-mcp_sh_godot addon install
+mcp_sh_godot plugin install
 ```
 
 Enable **mcp-sh-godot** in **Project Settings > Plugins**. The addon includes the

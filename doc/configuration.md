@@ -59,14 +59,14 @@ Console is enabled.
 ## Addon maintenance
 
 ```sh
-mcp_sh_godot addon status
+mcp_sh_godot plugin status
 mcp_sh_godot update
-mcp_sh_godot addon install
+mcp_sh_godot plugin install
 ```
 
-Run addon commands from the Godot project folder. `addon status` compares installed
+Run plugin commands from the Godot project folder. `plugin status` compares installed
 and bundled versions and reports Editor Console. Reinstall the addon after updating
-the binary. Use `addon remove` to uninstall it.
+the binary. Use `plugin remove` to uninstall it.
 
 ## Command context
 

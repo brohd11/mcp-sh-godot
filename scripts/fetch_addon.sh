@@ -1,6 +1,6 @@
 #!/bin/sh
 # Vendor the mcp-sh-godot plugin's release export into addon/mcp_sh_godot, which go:embed
-# carries and `mcp_sh_godot addon install` writes. Commit the result.
+# carries and `mcp_sh_godot plugin install` writes. Commit the result.
 #
 #   scripts/fetch_addon.sh             # latest release of brohd11/godot-mcp-sh-plugin
 #   scripts/fetch_addon.sh v0.2.0      # that tag

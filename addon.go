@@ -14,7 +14,7 @@ import (
 	"github.com/brohd11/mcp-sh"
 )
 
-// addonFS is the editor addon, written into a project by `mcp_sh_godot addon install`. It is
+// addonFS is the editor addon, written into a project by `mcp_sh_godot plugin install`. It is
 // the released export of github.com/brohd11/godot-mcp-sh-plugin, which bundles every library it
 // uses, vendored by scripts/fetch_addon.sh (`go generate`) and committed.
 //
@@ -27,8 +27,8 @@ const (
 	addonDir     = "addons/mcp_sh_godot" // relative to the project folder
 	addonName    = "mcp-sh-godot"        // plugin.cfg name
 	consoleDir   = "addons/editor_console"
-	addonUsage   = "addon install|status|remove [PROJECT_DIR] [--force]"
-	addonSummary = "Install, check or remove the editor addon in a Godot project"
+	addonUsage   = "plugin install|status|remove [PROJECT_DIR] [--force]"
+	addonSummary = "Install, check or remove the editor plugin in a Godot project"
 )
 
 // embeddedVersion is the version in the embedded addon's plugin.cfg. The plugin is released
@@ -46,7 +46,7 @@ func embeddedVersion() string {
 
 func addonCommand(version string) mcpsh.Subcommand {
 	return mcpsh.Subcommand{
-		Name: "addon", Usage: addonUsage, Summary: addonSummary,
+		Name: "plugin", Usage: addonUsage, Summary: addonSummary,
 		Run: func(args []string, stdout, stderr io.Writer) int {
 			return runAddon(version, args, stdout, stderr)
 		},
@@ -122,10 +122,10 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 		switch {
 		case !ok || name != addonName:
 			if !force {
-				return fmt.Errorf("%s exists but is not the mcp-sh-godot addon; use --force to replace it", dest)
+				return fmt.Errorf("%s exists but is not the mcp-sh-godot plugin; use --force to replace it", dest)
 			}
 		case compareVersions(installed, version) > 0 && !force:
-			return fmt.Errorf("installed addon %s is newer than the one this binary carries (%s); update mcp_sh_godot, or use --force", installed, version)
+			return fmt.Errorf("installed plugin %s is newer than the one this binary carries (%s); update mcp_sh_godot, or use --force", installed, version)
 		}
 	}
 	keep := map[string]bool{}
@@ -151,11 +151,11 @@ func installAddon(project, version string, force bool, stdout io.Writer) error {
 	if err := pruneAddon(dest, keep); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "Installed mcp-sh-godot addon %s in %s\n", version, dest)
+	fmt.Fprintf(stdout, "Installed mcp-sh-godot plugin %s in %s\n", version, dest)
 	if dirExists(filepath.Join(project, consoleDir)) {
-		fmt.Fprintln(stdout, "Note: Editor Console is installed. It serves its own commands with 'mcp --start', and this addon stays off while it runs.")
+		fmt.Fprintln(stdout, "Note: Editor Console is installed. It serves its own commands with 'mcp --start', and this plugin stays off while it runs.")
 	}
-	fmt.Fprintln(stdout, "Enable \"mcp-sh-godot\" in Project Settings > Plugins (an enabled addon reloads on its own).")
+	fmt.Fprintln(stdout, "Enable \"mcp-sh-godot\" in Project Settings > Plugins (an enabled plugin reloads on its own).")
 	return nil
 }
 
@@ -184,18 +184,18 @@ func addonStatus(project, binary, embedded string, stdout io.Writer) {
 	dest := filepath.Join(project, addonDir)
 	switch name, installed, ok := readPluginCfg(dest); {
 	case !ok && !dirExists(dest):
-		fmt.Fprintf(stdout, "addon           not installed (this binary, %s, carries %s): mcp_sh_godot addon install\n", binary, embedded)
+		fmt.Fprintf(stdout, "plugin          not installed (this binary, %s, carries %s): mcp_sh_godot plugin install\n", binary, embedded)
 	case !ok || name != addonName:
-		fmt.Fprintf(stdout, "addon           res://%s is not the mcp-sh-godot addon\n", addonDir)
+		fmt.Fprintf(stdout, "plugin          res://%s is not the mcp-sh-godot plugin\n", addonDir)
 	case installed != embedded:
-		fmt.Fprintf(stdout, "addon           %s, this binary carries %s: mcp_sh_godot addon install\n", installed, embedded)
+		fmt.Fprintf(stdout, "plugin          %s, this binary carries %s: mcp_sh_godot plugin install\n", installed, embedded)
 	default:
-		fmt.Fprintf(stdout, "addon           %s (matches this binary's)\n", installed)
+		fmt.Fprintf(stdout, "plugin          %s (matches this binary's)\n", installed)
 	}
 	if dirExists(filepath.Join(project, consoleDir)) {
-		fmt.Fprintln(stdout, "editor_console  installed: serve with its 'mcp --start'; this addon is not needed and stays off while it runs")
+		fmt.Fprintln(stdout, "editor_console  installed: serve with its 'mcp --start'; this plugin is not needed and stays off while it runs")
 	} else {
-		fmt.Fprintln(stdout, "editor_console  not installed: the addon serves gdsh, the editor commands and bridge.json's")
+		fmt.Fprintln(stdout, "editor_console  not installed: the plugin serves gdsh, the editor commands and bridge.json's")
 	}
 }
 
@@ -203,11 +203,11 @@ func removeAddon(project string, stdout io.Writer) error {
 	dest := filepath.Join(project, addonDir)
 	name, _, ok := readPluginCfg(dest)
 	if !ok && !dirExists(dest) {
-		fmt.Fprintf(stdout, "No addon in %s\n", dest)
+		fmt.Fprintf(stdout, "No plugin in %s\n", dest)
 		return nil
 	}
 	if !ok || name != addonName {
-		return fmt.Errorf("%s is not the mcp-sh-godot addon; not removing it", dest)
+		return fmt.Errorf("%s is not the mcp-sh-godot plugin; not removing it", dest)
 	}
 	if err := os.RemoveAll(dest); err != nil {
 		return err
