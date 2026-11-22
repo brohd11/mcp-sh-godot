@@ -55,4 +55,5 @@ func _execute(ctx:Context):
 	ctx.absorb_error(sub_ctx.stderr.trim_suffix("\n"))
 	ctx.exit_code = sub_ctx.exit_code
 	ctx.last_status = sub_ctx.exit_code
+	return ctx.exit_code
 

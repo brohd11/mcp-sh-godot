@@ -20,14 +20,13 @@ static func get_self_command_data():
 
 func _execute(ctx:Context):
 	if not positional_args[positional_args.size() - 1] == "]":
-		ctx.exit_code = ExitCode.FAIL
 		ctx.append_error("[: missing closing ']'")
-		return
+		return ExitCode.FAIL
 	var args := positional_args.slice(0, positional_args.size() - 1)  # drop "]"
 	if PRINT_DEBUG:
 		print("EVAL ARGS::", args)
 
-	ctx.exit_code = ExitCode.OK if _eval(args, ctx) else ExitCode.FAIL
+	return ExitCode.OK if _eval(args, ctx) else ExitCode.FAIL
 
 
 func _eval(args: Array, ctx) -> bool:

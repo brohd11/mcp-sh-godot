@@ -16,4 +16,5 @@ static func get_self_command_data():
 func _execute(ctx:Context):
 	if is_instance_valid(ctx.parent_ctx):
 		ctx.parent_ctx.positional_args.pop_front()
+	return ExitCode.OK
 

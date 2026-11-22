@@ -16,9 +16,10 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 
-func _execute(ctx:Context) -> void:
+func _execute(ctx:Context):
 	ctx.append_output(_section("Commands", ctx.scopes) + "\n\n" +
 			_section("Hidden commands", ctx.scopes_hidden))
+	return ExitCode.OK
 
 
 static func _section(title:String, values:Dictionary) -> String:

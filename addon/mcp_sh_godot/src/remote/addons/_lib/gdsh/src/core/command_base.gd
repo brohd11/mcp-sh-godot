@@ -8,6 +8,7 @@ const Options = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/s
 const Paths = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/paths.gd")
 const PathCompletion = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/path_completion.gd")
 const Utils = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/utils.gd")
+const ErrorCapture = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/util_r/src/object/error_capture.gd")
 const PRINT_DEBUG = false
 const _UNAMED = "UnamedCommand"
 
@@ -212,13 +213,26 @@ func execute(ctx:Context):
 		_get_help_for_token(consumed_tokens.front())
 		return ExitCode.FAIL
 
-	# Overrides may await; the exit code is set once they finish.
-	@warning_ignore("redundant_await")
-	var result = await _execute(ctx)
-	if result != null and result is int:
-		ctx.exit_code = result
+	var result = await await_exit_code(ctx, get_command_name(), _execute.bind(ctx))
+	ctx.exit_code = result
 	return result
 
+## Await a command's run (it may be a coroutine) and return its exit code. Commands must return
+## an ExitCode: null means a script error aborted it, so report what Godot logged meanwhile.
+static func await_exit_code(ctx:Context, name:String, run:Callable) -> int:
+	var sink = ErrorCapture.start()
+	@warning_ignore("redundant_await")
+	var result = await run.call()
+	var errors = ErrorCapture.stop(sink)
+	if result is int:
+		return result
+	for e in errors:
+		ctx.append_error(e)
+	if errors.is_empty():
+		ctx.append_error("%s: no exit code returned (a script error, or a missing return)" % name)
+	return ExitCode.ERR
+
+## Must return an ExitCode; see await_exit_code.
 func _execute(ctx:Context):
 	var help = consumed_tokens.front()
 	_get_help_for_token(help)

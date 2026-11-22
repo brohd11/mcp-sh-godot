@@ -21,11 +21,12 @@ func _execute(ctx:Context):
 	if not FileAccess.file_exists(path):
 		ctx.exit_code = ExitCode.FAIL
 		ctx.append_error("File doesn't exist, cannot source: " + path)
-		return
+		return ctx.exit_code
 	var source_history = ctx.data.get_or_add("source_history", {})
 	if source_history.has(path):
-		return
+		return ctx.exit_code
 	source_history[path] = true
 	await Execution.source_file(path, ctx)
+	return ctx.exit_code
 
 

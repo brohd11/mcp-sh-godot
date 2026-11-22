@@ -105,6 +105,15 @@ func load(path:String, hidden:=false) -> Dictionary:
 	return loaded
 
 
+## Load a command package's <path>/cmd/ dir (see GDSh.Load.load_package).
+func load_package(path:String, hidden:=false) -> Dictionary:
+	var resolved = path if path.is_absolute_path() else cwd.path_join(path).simplify_path()
+	if not DirAccess.dir_exists_absolute(resolved.path_join("cmd")):
+		push_error("GDSh.Context: package has no cmd/ dir: " + resolved)
+		return {}
+	return self.load(resolved.path_join("cmd"), hidden)
+
+
 func has_scope(name:String) -> bool:
 	return get_scope(name) != null
 

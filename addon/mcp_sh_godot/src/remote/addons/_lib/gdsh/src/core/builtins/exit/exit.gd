@@ -35,5 +35,6 @@ func _execute(ctx:Context):
 	for inh in inherited:
 		inh.exit_requested = true
 		inh.exit_code = code
+	return ctx.exit_code
 
 

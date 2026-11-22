@@ -5,17 +5,17 @@ extends RefCounted
 ##   project: res://.mcp-sh/godot/bridge.json
 ## These sit beside mcp-sh-godot's own config. Scalars replace earlier layers. `commandDirs`
 ## and `exclude` add to them. `commands` merges by name.
-## Each layer's `commands/` folder (when it exists) comes before its commandDirs, as mcp-sh
-## reads its own: $MCP_SH_CONFIG_DIR/godot/commands, then res://.mcp-sh/godot/commands, so gdsh
-## commands dropped there need no config. Only hosts that ask get them, with
-## add_commands_to(host, true): the editor plugins do; a game's own bridge doesn't.
+## Each layer's folder is also a gdsh command root (commands/ + packages/<name>/cmd), read
+## before its commandDirs with no config. Only hosts that ask get the roots, with
+## add_commands_to(host, true): the editor plugins do; a game's own bridge doesn't. Those hosts
+## also get gdsh's shared ~/.gdsh and res://.gdsh roots (GDSh.Load.default_dirs) first.
 
 const Bridge = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/mcp_sh_bridge/src/bridge.gd")
 const FILE_NAME = "bridge.json"
-## Read from beside each config file without being listed.
+## A root's loose-command folder, for gdsh copies without add_command_root.
 const COMMANDS_DIR = "commands"
 
-const KEYS = ["port", "token", "autostart", "gdshLib", "commandDirs", "commands", "exclude", "include", "maxRequestBytes", "maxConnections", "idleTimeoutMs"]
+const KEYS = ["port", "token", "autostart", "gdshLib", "commandDirs", "commands", "exclude", "include", "maxRequestBytes", "maxConnections", "idleTimeoutMs", "gdshRoot"]
 
 ## 0: the bridge's default for where it runs (9510 in the editor). -1: any free port.
 var port:int = 0
@@ -37,7 +37,7 @@ var max_connections:int = 8
 var idle_timeout_ms:int = 10000
 ## Files that were read, in order, for the startup message.
 var sources:PackedStringArray = []
-## Every directory in the order the host gets them: [path, is a commands/ folder].
+## Every directory in the order the host gets them: [path, is a layer's command root].
 var _dirs:Array = []
 
 
@@ -48,9 +48,8 @@ static func load_config():
 		cfg.port = env_port.to_int()
 	cfg.token = OS.get_environment("MCP_SH_GODOT_TOKEN")
 	for path in [user_path(), project_path()]:
-		var commands_dir = path.get_base_dir().path_join(COMMANDS_DIR)
-		if DirAccess.dir_exists_absolute(commands_dir):
-			cfg._dirs.append([commands_dir, true])
+		# Listed on each request by the host, so it may be created after startup.
+		cfg._dirs.append([path.get_base_dir(), true])
 		cfg._apply_file(path)
 	return cfg
 
@@ -66,14 +65,23 @@ func apply_to(bridge) -> void:
 	bridge.idle_timeout_ms = idle_timeout_ms
 
 
-## Add `commandDirs` and `commands` to a GDSh.Host, and with command_folders the `commands/`
-## folders beside each config file too. Returns the host; null stays null.
-func add_commands_to(host, command_folders:=false):
+## Add `commandDirs` and `commands` to a GDSh.Host, and with command_roots the gdsh default
+## roots and each layer's folder as a root too. Returns the host; null stays null.
+func add_commands_to(host, command_roots:=false):
 	if host == null:
 		return null
+	# Before the layers, so bridge.json wins a name clash. Older gdsh copies lack it.
+	if command_roots and host.has_method("add_default_dirs"):
+		host.add_default_dirs()
 	for entry in _dirs:
-		if command_folders or not entry[1]:
+		if not entry[1]:
 			host.add_command_dir(entry[0])
+		elif not command_roots:
+			continue
+		elif host.has_method("add_command_root"):
+			host.add_command_root(entry[0])
+		elif DirAccess.dir_exists_absolute(entry[0].path_join(COMMANDS_DIR)):
+			host.add_command_dir(entry[0].path_join(COMMANDS_DIR))
 	for name in commands:
 		host.add_command(commands[name], name)
 	return host

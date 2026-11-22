@@ -30,4 +30,5 @@ func _execute(ctx:Context):
 		ctx.write_output("\n") # Verbatim: append_output drops empty text.
 	else:
 		ctx.append_output(string)
+	return ExitCode.OK
 

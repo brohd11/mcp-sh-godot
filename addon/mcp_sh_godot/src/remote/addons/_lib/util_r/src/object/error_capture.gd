@@ -37,14 +37,27 @@ static func supported() -> bool:
 ## Run callable and return {result, errors}: its return value, and each error reported meanwhile
 ## as "file:line: message". Errors from other threads in that time are included too.
 static func run(callable:Callable) -> Dictionary:
-	var sink = _new_sink()
-	if sink == null:
-		return {"result": callable.call(), "errors": PackedStringArray()}
-	# By name: a direct OS.add_logger() call wouldn't parse before 4.5.
-	OS.call(&"add_logger", sink)
+	var sink = start()
 	var result = callable.call()
+	return {"result": result, "errors": stop(sink)}
+
+
+## Start collecting, for callers that await between start and stop. Returns the handle for
+## stop(), or null where unsupported.
+static func start():
+	var sink = _new_sink()
+	if sink != null:
+		# By name: a direct OS.add_logger() call wouldn't parse before 4.5.
+		OS.call(&"add_logger", sink)
+	return sink
+
+
+## Stop collecting and return the errors reported since start(sink).
+static func stop(sink) -> PackedStringArray:
+	if sink == null:
+		return PackedStringArray()
 	OS.call(&"remove_logger", sink)
-	return {"result": result, "errors": sink.take()}
+	return sink.take()
 
 
 static func _new_sink():

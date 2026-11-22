@@ -6,9 +6,9 @@
 			"package": "",
 			"path": "res://addons/_lib/gdsh",
 			"repo_id": "github.com/brohd11/godot-gdsh",
-			"sha": "a212f180a820b9b68a4ff060b7895f383a7e68dc",
+			"sha": "3d9d29058db2d85552d4d4086ae3027553d49738",
 			"source": "remote",
-			"tag": "v0.4.5",
+			"tag": "v0.5.0",
 			"url": "https://github.com/brohd11/godot-gdsh",
 			"verify": false
 		},
@@ -18,9 +18,9 @@
 			"package": "",
 			"path": "res://addons/_lib/gdsh_lib/editor",
 			"repo_id": "github.com/brohd11/godot-gdsh-lib-editor",
-			"sha": "3f350675d2afd2b6a2d6205813ff4278ddb31819",
+			"sha": "570362d484e1fb336f104e5b293127aa42320d86",
 			"source": "remote",
-			"tag": "v0.1.3",
+			"tag": "v0.2.1",
 			"url": "https://github.com/brohd11/godot-gdsh-lib-editor",
 			"verify": false
 		},
@@ -30,9 +30,9 @@
 			"package": "",
 			"path": "res://addons/_lib/gdsh_lib/tree",
 			"repo_id": "github.com/brohd11/godot-gdsh-lib-tree",
-			"sha": "dccb0a763fcf178570187ef54c7df638a686f89a",
+			"sha": "e8b17ac04db566a954e61c0abe8d0d2b3fedf58f",
 			"source": "remote",
-			"tag": "v0.2.4",
+			"tag": "v0.3.1",
 			"url": "https://github.com/brohd11/godot-gdsh-lib-tree",
 			"verify": false
 		},
@@ -54,9 +54,9 @@
 			"package": "",
 			"path": "res://addons/_lib/gdsh_lib/utils",
 			"repo_id": "github.com/brohd11/godot-gdsh-lib-utils",
-			"sha": "0d99cfe4b4db0cf6efe5199472d56ce99e65d0fd",
+			"sha": "ab9f2b316f7e2f9746a8a6fa651789d14bd875a3",
 			"source": "remote",
-			"tag": "v0.3.4",
+			"tag": "v0.4.1",
 			"url": "https://github.com/brohd11/godot-gdsh-lib-utils",
 			"verify": false
 		},
@@ -66,9 +66,9 @@
 			"package": "",
 			"path": "res://addons/_lib/mcp_sh_bridge",
 			"repo_id": "github.com/brohd11/godot-mcp-sh-bridge",
-			"sha": "32d5906cb77573ff983b7b1c25c684618e21ca81",
+			"sha": "bbc44b907d00aa9b124e5c6460826800bc27feca",
 			"source": "remote",
-			"tag": "v0.1.3",
+			"tag": "v0.1.4",
 			"url": "https://github.com/brohd11/godot-mcp-sh-bridge",
 			"verify": false
 		},
@@ -78,9 +78,9 @@
 			"package": "",
 			"path": "res://addons/_lib/util_r",
 			"repo_id": "github.com/brohd11/godot-util-r",
-			"sha": "1fc76482471ec21d537e6b61323b444acb92b221",
+			"sha": "54220c44a302ddfd09d3aa847f9978dca6132b9a",
 			"source": "remote",
-			"tag": "v0.4.2",
+			"tag": "v0.4.3",
 			"url": "https://github.com/brohd11/godot-util-r",
 			"verify": false
 		}
@@ -92,15 +92,15 @@
 		"package": "",
 		"path": "res://addons/mcp_sh_godot",
 		"repo_id": "github.com/brohd11/godot-mcp-sh-plugin",
-		"sha": "19f3784005d6b91b2b1ebb248a06276ac10d8c18",
+		"sha": "c3cbf942d433f533d8de8bcff855631dd0ad537b",
 		"source": "remote",
-		"tag": "v0.1.6",
+		"tag": "v0.1.7",
 		"url": "https://github.com/brohd11/godot-mcp-sh-plugin",
 		"verify": false
 	},
 	"toolchain": {
-		"id": "79f5d3c6839e315c92d830cd0818925471288b47e24c2d544f166a643f344343",
+		"id": "095367ddec62843cb6ea4742079a0752296e9b6b6f57113d611f2f6d3040abf8",
 		"source": "remote",
-		"version": "0.13.0"
+		"version": "0.13.1"
 	}
 }

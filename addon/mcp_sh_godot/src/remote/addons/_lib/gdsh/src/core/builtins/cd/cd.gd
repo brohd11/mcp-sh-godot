@@ -41,4 +41,5 @@ static func execute_static(ctx:Context, pos_args:Array):
 	else:
 		ctx.append_error("Directory does not exist: " + target)
 		return ExitCode.ERR
+	return ExitCode.OK
 

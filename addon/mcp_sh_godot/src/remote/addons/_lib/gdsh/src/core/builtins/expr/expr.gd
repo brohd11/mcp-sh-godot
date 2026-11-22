@@ -20,6 +20,7 @@ static func get_self_command_data():
 
 func _execute(ctx:Context):
 	run_expr(ctx, positional_args)
+	return ctx.exit_code
 
 static func run_expr(ctx:Context, args:Array):
 	var expression = " ".join(args)

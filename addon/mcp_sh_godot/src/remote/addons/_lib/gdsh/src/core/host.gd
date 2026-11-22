@@ -41,12 +41,14 @@ var _queue:Array[int] = []
 var _next_ticket := 0
 
 
-#! keys builtins:bool host_data:Dictionary command_dirs:Array commands:Dictionary
+#! keys builtins:bool host_data:Dictionary default_dirs:bool command_dirs:Array commands:Dictionary
 ## builtins (default true): offer GDSh's builtins. host_data: hooks for every request's ctx
-## (see docs/commands.md). command_dirs and commands ({name: path}): added as by add_command_dir
-## and add_command.
+## (see docs/commands.md). default_dirs: add_default_dirs() first. command_dirs and commands
+## ({name: path}): added as by add_command_dir and add_command.
 func _init(options:Dictionary = {}) -> void:
 	_options = options
+	if options.get("default_dirs", false):
+		add_default_dirs()
 	for dir in options.get("command_dirs", []):
 		add_command_dir(str(dir))
 	var commands = options.get("commands", {})
@@ -63,6 +65,23 @@ func add_command_dir(dir:String) -> bool:
 		return false
 	_added.append({"dir": dir, "scopes": Load.load_directory(dir)})
 	return true
+
+
+## Add a command package: its <path>/cmd/ dir (as GDSh.Load.load_package).
+func add_package(path:String) -> bool:
+	return add_command_dir(path.path_join("cmd"))
+
+
+## Add the ~/.gdsh and res://.gdsh commands and packages (GDSh.Load.default_dirs). Listed again
+## on every request, so a package cloned there later shows up without a restart.
+func add_default_dirs() -> void:
+	_added.append({"defaults": true})
+
+
+## Add a command root's commands/ and packages/<name>/cmd dirs (GDSh.Load.root_dirs). Listed
+## again on every request, so the root may not exist yet.
+func add_command_root(root:String) -> void:
+	_added.append({"root": root})
 
 
 ## Add one command script, under `name` or its own command name.
@@ -83,20 +102,32 @@ func _get_added_scopes() -> Dictionary:
 	for entry in _added:
 		if entry.has("name"):
 			scopes[entry.name] = {Types.ScopeDataKeys.SCRIPT: entry.script}
+		elif entry.has("defaults"):
+			for dir in Load.default_dirs():
+				_merge_user_dir(dir, scopes, broken)
+		elif entry.has("root"):
+			for dir in Load.root_dirs(entry.root):
+				_merge_user_dir(dir, scopes, broken)
 		elif Load.is_user_path(entry.dir):
-			if DirAccess.dir_exists_absolute(entry.dir):
-				scopes.merge(Load.load_directory(entry.dir), true)
-				var errors = Load.user_build_errors(entry.dir)
-				for path in errors:
-					var name = _command_file_name(entry.dir, path)
-					if not name.is_empty():
-						broken[name] = {"path": path, "error": errors[path]}
+			_merge_user_dir(entry.dir, scopes, broken)
 		else:
 			scopes.merge(entry.scopes, true)
 	for name in scopes:
 		broken.erase(name)
 	_broken = broken
 	return scopes
+
+
+## A user dir listed fresh into scopes, with its failed files into broken.
+static func _merge_user_dir(dir:String, scopes:Dictionary, broken:Dictionary) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
+		return
+	scopes.merge(Load.load_directory(dir), true)
+	var errors = Load.user_build_errors(dir)
+	for path in errors:
+		var name = _command_file_name(dir, path)
+		if not name.is_empty():
+			broken[name] = {"path": path, "error": errors[path]}
 
 
 ## The command a file in dir would be (dir/name.gd or dir/name/name.gd), or "" for others.

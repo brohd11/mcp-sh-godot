@@ -10,6 +10,7 @@ const Parser = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/sr
 const Lexer = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/lexer.gd")
 const Expansion = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/expansion.gd")
 const Utils = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/utils.gd")
+const CommandBase = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/command_base.gd")
 const _IS_LOOP_KEY = "__is_loop__"
 const _LOOP_BREAK_KEY = "__loop_break__"
 const _LOOP_CONTINUE_KEY = "__loop_continue__"
@@ -382,8 +383,8 @@ static func _simple(node:Dictionary, ctx:Context, aliases:Dictionary):
 		var scope = ctx.get_scope(node.words[0].raw)
 		var script = _instance(scope.get(Types.ScopeDataKeys.SCRIPT) if scope != null else null)
 		if is_instance_valid(script) and script.has_method("execute_raw"):
-			var status = await script.execute_raw(node.raw_args, command)
-			if status is int: command.exit_code = status
+			var name = node.words[0].raw
+			command.exit_code = await CommandBase.await_exit_code(command, name, script.execute_raw.bind(node.raw_args, command))
 		else:
 			command.append_error("Raw command has no execute_raw handler: " + node.words[0].raw)
 			command.exit_code = Types.ExitCode.ERR
