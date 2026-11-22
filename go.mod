@@ -2,10 +2,12 @@ module github.com/brohd11/mcp-sh-godot
 
 go 1.26.4
 
-require github.com/brohd11/mcp-sh v0.1.5
+require (
+	github.com/brohd11/gdsh-pkg v0.1.0
+	github.com/brohd11/mcp-sh v0.1.5
+)
 
 require (
-	github.com/brohd11/gdsh-pkg v0.0.0-00010101000000-000000000000
 	github.com/brohd11/goutil v0.2.1 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
