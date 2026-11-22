@@ -36,6 +36,7 @@ static func get_self_command_data() -> Dictionary:
 
 ## positional_args: the arguments. ctx.stdin: piped input. ctx.cwd, ctx.cwn: the working
 ## directory and node. ctx.append_output(), ctx.append_error(): one line each.
+## Must return an ExitCode (OK, FAIL, ERR): returning nothing is reported as an error.
 func _execute(ctx:Context):
 	ctx.append_output("{{.Name}}: " + " ".join(positional_args))
 	return ExitCode.OK

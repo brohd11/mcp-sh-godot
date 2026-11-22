@@ -6,9 +6,11 @@
 
 Editor Console and the addon read `~/.mcp-sh/godot/bridge.json`, then
 `res://.mcp-sh/godot/bridge.json`. Later files win, and `commandDirs`/`exclude` add up. Each
-file's `commands/` folder, beside it, is read before its `commandDirs`. Use
+file's folder is a command root (`commands/` + `packages/<name>/cmd`), read before its
+`commandDirs` (see [Custom commands](custom-commands.md)). Use
 Project > Tools > Restart mcp-sh-godot Bridge (or `mcp --stop; mcp --start` in Editor Console)
-after editing them. `autostart` and `gdshLib` are the addon's keys only.
+after editing them. `autostart` and `gdshLib` are the addon's keys only. `newCommands` is
+read only by `mcp_sh_godot gdsh new`, and only from the user file.
 
 ```json
 {
@@ -22,12 +24,16 @@ after editing them. `autostart` and `gdshLib` are the addon's keys only.
   "include": ["echo"],
   "maxRequestBytes": 1048576,
   "maxConnections": 8,
-  "idleTimeoutMs": 10000
+  "idleTimeoutMs": 10000,
+  "newCommands": "mcp-sh"
 }
 ```
 
 - `commandDirs` are gdsh command folders. `commands` maps a name to one command script.
   Relative paths are relative to the config file, and `~/` is the home folder.
+- `newCommands`: where `gdsh new` writes. `mcp-sh` (default) uses `~/.mcp-sh/godot/commands`,
+  and `gdsh` uses `~/.gdsh/commands`, which Editor Console reads too. Set it with
+  `mcp_sh_godot gdsh target`.
 - `port` 0 is 9510 in the editor; -1 is any free port.
 - `maxRequestBytes` rejects oversized request lines with "Request too large".
   `maxConnections` caps active and waiting connections; excess connections close immediately.

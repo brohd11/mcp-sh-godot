@@ -30,7 +30,9 @@ mcp_sh_godot setup
 
 `setup` creates `~/.mcp-sh/godot/` and prints registration commands for Claude Code
 and Codex. Run the appropriate printed command for your client; `setup` does not
-register the server itself.
+register the server itself. If you also use Editor Console, run
+`mcp_sh_godot gdsh target gdsh` once so new custom commands go to the shared `~/.gdsh`
+folder (see [Custom commands](doc/custom-commands.md)).
 
 In your Godot project folder, install the bundled addon:
 
