@@ -13,6 +13,7 @@ const COMMANDS = [
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/find/find.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/grep/grep.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/head/head.gd"),
+	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/home/home.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/ls/ls.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/math/math.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/mkdir/mkdir.gd"),

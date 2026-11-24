@@ -16,7 +16,7 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 func _get_completions(_ctx:Completion):
-	if not _positional_arg_index_valid():
+	if not Engine.is_editor_hint() or not _positional_arg_index_valid():
 		return {}
 	var settings = EditorInterface.get_editor_settings()
 	var options = Options.new()
@@ -27,6 +27,10 @@ func _get_completions(_ctx:Completion):
 	return options.get_options()
 
 func _execute(ctx:Context):
+	# Headless (gdsh CLI) has no EditorSettings; the call would be a script error.
+	if not Engine.is_editor_hint():
+		ctx.append_error("esetting needs the editor.")
+		return ExitCode.FAIL
 	var settings = EditorInterface.get_editor_settings()
 	var name = positional_args[0]
 	if not settings.has_setting(name):
