@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,69 +8,33 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
-	"text/template"
 
+	gdshpkg "github.com/brohd11/gdsh-pkg"
+	"github.com/brohd11/godot-gdsh-cli/gdshcmd"
 	"github.com/brohd11/mcp-sh"
 	"github.com/brohd11/mcp-sh/profile"
 )
 
 // gdsh commands are GDScript files the editor bridge (the addon's, or Editor Console's) loads
 // from folders: gdsh's shared ~/.gdsh and res://.gdsh roots, then each config layer's folder as
-// a root, then bridge.json's commandDirs. A root holds commands/ and packages/<name>/cmd. This
-// subcommand writes commands from templates and edits commandDirs and gdshRoot.
-
-//go:embed templates/*.gd.tmpl
-var gdshTemplates embed.FS
+// a root, then bridge.json's commandDirs. The verbs shared with the gdsh CLI come from gdshcmd;
+// this file adds the bridge's own: target (gdshRoot) and add/remove (commandDirs).
 
 const (
-	gdshUsage   = "gdsh new|search|install|packages|update|uninstall|add|remove|dirs|target ...  (gdsh --help)"
+	gdshUsage   = "gdsh new|search|install|packages|update|uninstall|dirs|target|add|remove ...  (gdsh --help)"
 	gdshSummary = "Write and install gdsh commands for the editor bridge, and manage the folders it reads them from"
-	gdshHelp    = `usage:
-  mcp_sh_godot gdsh new NAME [SUB...] [--project | --dir DIR] [--force]
-      Write a command script. Name it as it is typed: 'gdsh new tools bake' writes
-      tools/bake/bake.gd, the 'bake' subcommand of 'tools', and a tools/tools.gd parent if
-      there is none. It goes in the commands/ folder of the root 'gdsh target' picks, or of
-      this project's root (--project), or in any folder (--dir). --force replaces the command.
-  mcp_sh_godot gdsh search [TERM] [--refresh]
-      List the reviewed command packages (godot-gdsh-lib-manifest), with what they need and
-      whether they are installed.
-  mcp_sh_godot gdsh install NAME... [--project | --dir ROOT] [--force] [--refresh]
-      Install packages and the packages they need into the root's packages/ folder, at the
-      versions the index pins. --force reinstalls current ones.
-  mcp_sh_godot gdsh packages [--project | --dir ROOT]
-      List installed packages, and newer pinned versions.
-  mcp_sh_godot gdsh update [NAME...] [--project | --dir ROOT]
-      Update the named packages, or every outdated one.
-  mcp_sh_godot gdsh uninstall NAME [--project | --dir ROOT] [--force]
-      Remove a package; --force even when an installed package needs it.
-  mcp_sh_godot gdsh target [mcp-sh|gdsh]
-      Show or set the root 'gdsh new' and 'gdsh install' use (gdshRoot in
-      ~/.mcp-sh/godot/bridge.json):
-        gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh (default).
-                Shared with the gdsh CLI and Editor Console.
-        mcp-sh  ~/.mcp-sh/godot, --project: .mcp-sh/godot.
-                Only the MCP bridge reads it.
-  mcp_sh_godot gdsh add DIR [--project]
-  mcp_sh_godot gdsh remove DIR [--project]
-      Add or remove a folder of commands (a library) in bridge.json's commandDirs: the user
-      file, or this project's (--project).
-  mcp_sh_godot gdsh dirs
-      List the folders the bridge reads, in order (later ones win on a name clash).
-
-The bridge reads these command roots without config: ~/.gdsh, res://.gdsh, ~/.mcp-sh/godot
-and res://.mcp-sh/godot. Each gives its commands/ folder and every packages/<name>/cmd.
-commandDirs come after their layer's root. Folders outside res:// and in res://.gdsh or
-res://.mcp-sh are read on every request, so a new command is there without restarting the
-bridge, and edits apply on the next run.
+	gdshTail    = `The bridge reads these command roots without config: ~/.gdsh, res://.gdsh, ~/.mcp-sh/godot
+and res://.mcp-sh/godot. Each gives its commands/ folder and every packages/<name>/cmd; 'new'
+and 'install' use the user or project root 'target' picks. commandDirs come after their
+layer's root. Folders outside res:// and in res://.gdsh or res://.mcp-sh are read on every
+request, so a new command is there without restarting the bridge, and edits apply on the next
+run.
 Commands extend "res://addons/_lib/gdsh/src/core/command_base.gd"; the bridge swaps that for
-the gdsh copy it runs, so the same file works with the addon, Editor Console or the library.
+the gdsh copy it runs, so the same file works with the addon, Editor Console or the gdsh CLI.
 `
-	gdshCommandsDir = "commands"
-	gdshPackagesDir = "packages"
-	bridgeFileName  = "bridge.json"
+	bridgeFileName = "bridge.json"
 
 	targetKey     = "gdshRoot"
 	targetMcpSh   = "mcp-sh"
@@ -79,14 +42,50 @@ the gdsh copy it runs, so the same file works with the addon, Editor Console or 
 	targetDefault = targetGdsh
 )
 
-var gdshName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+// pkgClient is the package index client; nil is the published index. Tests swap it.
+var pkgClient *gdshpkg.Client
 
 func gdshCommand() mcpsh.Subcommand {
 	return mcpsh.Subcommand{
 		Name: "gdsh", Usage: gdshUsage, Summary: gdshSummary,
-		Run: func(args []string, stdout, stderr io.Writer) int {
-			return runGdsh(args, stdout, stderr)
+		Run: runGdsh,
+	}
+}
+
+func runGdsh(args []string, stdout, stderr io.Writer) int {
+	return gdshHost().Run(args, stdout, stderr)
+}
+
+func gdshHost() *gdshcmd.Host {
+	return &gdshcmd.Host{
+		Prog: "mcp_sh_godot gdsh", Name: "The bridge", AddCmd: "mcp_sh_godot gdsh add",
+		Root: func(project string) (string, error) {
+			target, err := readTarget()
+			if err != nil {
+				return "", err
+			}
+			return targetRoot(target, project), nil
 		},
+		Folders: gdshFolders,
+		Try:     func(line string) string { return "'" + line + "' through mcp_sh_godot" },
+		Listed:  "The bridge lists them on its next request; try '<command> --help' through mcp_sh_godot.",
+		Note:    "(A bridge that read its folders only at startup lists a new command after a restart.)",
+		Extra: []gdshcmd.Verb{
+			{Names: []string{"target"}, Usage: []string{"target [mcp-sh|gdsh]"},
+				Help: `      Show or set the root 'new' and 'install' use (gdshRoot in
+      ~/.mcp-sh/godot/bridge.json):
+        gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh (default).
+                Shared with the gdsh CLI and Editor Console.
+        mcp-sh  ~/.mcp-sh/godot, --project: .mcp-sh/godot.
+                Only the MCP bridge reads it.
+`, Run: func(_ string, args []string, stdout io.Writer) error { return gdshTarget(args, stdout) }},
+			{Names: []string{"add", "remove"}, Usage: []string{"add DIR [--project]", "remove DIR [--project]"},
+				Help: `      Add or remove a folder of commands (a library) in bridge.json's commandDirs: the user
+      file, or this project's (--project).
+`, Run: gdshEditDirs},
+		},
+		HelpTail: gdshTail,
+		Client:   pkgClient,
 	}
 }
 
@@ -97,21 +96,8 @@ type gdshLayer struct {
 	project string // the project folder, for res:// entries; "" for the user layer
 }
 
-func (l gdshLayer) commandsDir() string { return filepath.Join(l.dir, gdshCommandsDir) }
+func (l gdshLayer) commandsDir() string { return filepath.Join(l.dir, gdshcmd.CommandsDir) }
 func (l gdshLayer) bridgeFile() string  { return filepath.Join(l.dir, bridgeFileName) }
-
-// gdshHome is gdsh's shared user root: $GDSH_HOME, else ~/.gdsh ("" without a home folder),
-// as GDSh.Load.home_dir.
-func gdshHome() string {
-	if dir := os.Getenv("GDSH_HOME"); dir != "" {
-		return dir
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".gdsh")
-}
 
 func userLayer() gdshLayer {
 	return gdshLayer{label: "user", dir: filepath.Join(profile.ConfigDir(), "godot")}
@@ -121,219 +107,22 @@ func projectLayer(project string) gdshLayer {
 	return gdshLayer{label: "project", dir: filepath.Join(project, ".mcp-sh", "godot"), project: project}
 }
 
-func runGdsh(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
-		fmt.Fprint(stderr, gdshHelp)
-		return 2
-	}
-	if args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
-		fmt.Fprint(stdout, gdshHelp)
-		return 0
-	}
-	var err error
-	switch args[0] {
-	case "new":
-		err = gdshNew(args[1:], stdout)
-	case "add", "remove":
-		err = gdshEditDirs(args[0], args[1:], stdout)
-	case "target":
-		err = gdshTarget(args[1:], stdout)
-	case "search", "install", "packages", "update", "uninstall":
-		err = gdshPackages(args[0], args[1:], stdout)
-	case "dirs":
-		if len(args) > 1 {
-			err = usageError("dirs takes no arguments")
-		} else {
-			gdshDirs(stdout)
-		}
-	default:
-		err = usageError(fmt.Sprintf("unknown gdsh command %q", args[0]))
-	}
-	var ue usageError
-	if errors.As(err, &ue) {
-		fmt.Fprintf(stderr, "%s\n\n%s", ue, gdshHelp)
-		return 2
-	}
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
-	}
-	return 0
-}
-
-type usageError string
-
-func (e usageError) Error() string { return string(e) }
-
-// gdshNew writes NAME [SUB...]: missing parents get the parent template, the last name the
-// command template.
-func gdshNew(args []string, stdout io.Writer) error {
-	var names []string
-	var dir string
-	project, force := false, false
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch {
-		case a == "--project":
-			project = true
-		case a == "--force":
-			force = true
-		case a == "--dir":
-			if i+1 >= len(args) {
-				return usageError("--dir needs a folder")
-			}
-			i++
-			dir = args[i]
-		case strings.HasPrefix(a, "--dir="):
-			dir = strings.TrimPrefix(a, "--dir=")
-		case strings.HasPrefix(a, "-"):
-			return usageError(fmt.Sprintf("unknown flag %q", a))
-		default:
-			if !gdshName.MatchString(a) {
-				return fmt.Errorf("invalid command name %q: use letters, digits, _ and -", a)
-			}
-			names = append(names, a)
-		}
-	}
-	if len(names) == 0 {
-		return usageError("new needs a command name")
-	}
-	if project && dir != "" {
-		return usageError("use --project or --dir, not both")
-	}
-
-	var folder string
-	if dir != "" {
-		abs, err := filepath.Abs(profile.ResolveDir(dir, "."))
-		if err != nil {
-			return err
-		}
-		folder = abs
-	} else {
-		target, err := readTarget()
-		if err != nil {
-			return err
-		}
-		projectRoot := ""
-		if project {
-			if projectRoot, err = findProject(""); err != nil {
-				return err
-			}
-		}
-		if folder = targetFolder(target, projectRoot); folder == "" {
-			return errors.New("no home folder for ~/.gdsh: set GDSH_HOME or use --dir")
-		}
-	}
-
-	// Plan every file before writing any, so a refusal leaves nothing half made.
-	type file struct{ path, tmpl, name, usage string }
-	var files []file
-	parent := folder
-	for i, name := range names {
-		usage := strings.Join(names[:i+1], " ")
-		if loose := filepath.Join(parent, name+".gd"); fileExists(loose) {
-			return fmt.Errorf("%s is a single-file command; move it to %s to give it subcommands or replace it",
-				loose, filepath.Join(parent, name, name+".gd"))
-		}
-		path := filepath.Join(parent, name, name+".gd")
-		last := i == len(names)-1
-		switch {
-		case last && fileExists(path) && !force:
-			return fmt.Errorf("%s exists; use --force to replace it", path)
-		case last:
-			files = append(files, file{path, "command.gd.tmpl", name, usage})
-		case !fileExists(path):
-			files = append(files, file{path, "parent.gd.tmpl", name, usage})
-		}
-		parent = filepath.Join(parent, name)
-	}
-	for _, f := range files {
-		if err := writeTemplate(f.path, f.tmpl, f.name, f.usage); err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, "Created %s\n", f.path)
-	}
-
-	if !gdshFolderRead(folder) {
-		fmt.Fprintf(stdout, "The bridge doesn't read %s yet. Add it with: mcp_sh_godot gdsh add %s\n", folder, folder)
-	}
-	fmt.Fprintf(stdout, "Fill in its help and _execute, then check it through mcp_sh_godot: %s --help\n", strings.Join(names, " "))
-	fmt.Fprintln(stdout, "(A bridge that read its folders only at startup lists a new command after a restart.)")
-	return nil
-}
-
-func writeTemplate(path, name, command, usage string) error {
-	t, err := template.ParseFS(gdshTemplates, "templates/"+name)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	err = t.Execute(f, map[string]string{"Name": command, "Usage": usage})
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	return err
-}
-
-// gdshFolderRead reports whether the bridge reads folder, as a commands/ folder or a
-// commandDirs entry, from wherever this runs.
-func gdshFolderRead(folder string) bool {
-	for _, d := range gdshFolders() {
-		if sameDir(d.path, folder) {
-			return true
-		}
-	}
-	return false
-}
-
-type gdshFolder struct {
-	path, source string
-}
-
 // gdshFolders lists the folders the bridge reads, in its order: the ~/.gdsh and project .gdsh
 // roots, then per layer (user, then project when run inside one) its root and commandDirs.
-func gdshFolders() []gdshFolder {
-	project, perr := findProject("")
-	var out []gdshFolder
-	if home := gdshHome(); home != "" {
-		out = append(out, rootFolders(home, "gdsh user")...)
-	}
+func gdshFolders() []gdshcmd.Folder {
+	out := gdshcmd.GdshFolders()
 	layers := []gdshLayer{userLayer()}
-	if perr == nil {
-		out = append(out, rootFolders(filepath.Join(project, ".gdsh"), "gdsh project")...)
+	if project, err := findProject(""); err == nil {
 		layers = append(layers, projectLayer(project))
 	}
 	for _, l := range layers {
-		out = append(out, rootFolders(l.dir, l.label)...)
+		out = append(out, gdshcmd.RootFolders(l.dir, l.label)...)
 		cfg, err := readBridgeConfig(l.bridgeFile())
 		if err != nil {
 			continue
 		}
 		for _, d := range cfg.dirs {
-			out = append(out, gdshFolder{l.resolve(d), l.label + " commandDirs: " + d})
-		}
-	}
-	return out
-}
-
-// rootFolders is GDSh.Load.root_dirs: commands/ (listed even when missing, as where new
-// commands go), then each packages/<name>/cmd that exists, sorted.
-func rootFolders(root, label string) []gdshFolder {
-	out := []gdshFolder{{filepath.Join(root, gdshCommandsDir), label + " commands folder"}}
-	entries, err := os.ReadDir(filepath.Join(root, gdshPackagesDir))
-	if err != nil {
-		return out
-	}
-	for _, e := range entries { // ReadDir sorts by name
-		cmd := filepath.Join(root, gdshPackagesDir, e.Name(), "cmd")
-		if e.IsDir() && dirExists(cmd) {
-			out = append(out, gdshFolder{cmd, label + " package " + e.Name()})
+			out = append(out, gdshcmd.Folder{Path: l.resolve(d), Source: l.label + " commandDirs: " + d})
 		}
 	}
 	return out
@@ -359,16 +148,6 @@ func (l gdshLayer) resolve(entry string) string {
 	return filepath.Join(l.dir, entry)
 }
 
-func gdshDirs(stdout io.Writer) {
-	for _, d := range gdshFolders() {
-		state := ""
-		if !dirExists(d.path) {
-			state = "  (missing)"
-		}
-		fmt.Fprintf(stdout, "%s  [%s]%s\n", d.path, d.source, state)
-	}
-}
-
 func gdshEditDirs(sub string, args []string, stdout io.Writer) error {
 	layer := userLayer()
 	var dir string
@@ -381,13 +160,13 @@ func gdshEditDirs(sub string, args []string, stdout io.Writer) error {
 			}
 			layer = projectLayer(root)
 		case strings.HasPrefix(a, "-") || dir != "":
-			return usageError(fmt.Sprintf("unexpected argument %q", a))
+			return gdshcmd.UsageError(fmt.Sprintf("unexpected argument %q", a))
 		default:
 			dir = a
 		}
 	}
 	if dir == "" {
-		return usageError(sub + " needs a folder")
+		return gdshcmd.UsageError(sub + " needs a folder")
 	}
 	entry := layer.entryFor(dir)
 	path := layer.bridgeFile()
@@ -450,7 +229,7 @@ func targetRoot(target, project string) string {
 	case target == targetGdsh && project != "":
 		return filepath.Join(project, ".gdsh")
 	case target == targetGdsh:
-		return gdshHome()
+		return gdshcmd.Home()
 	case project != "":
 		return projectLayer(project).dir
 	}
@@ -460,14 +239,14 @@ func targetRoot(target, project string) string {
 // targetFolder is where 'gdsh new' writes for a target: its root's commands/.
 func targetFolder(target, project string) string {
 	if root := targetRoot(target, project); root != "" {
-		return filepath.Join(root, gdshCommandsDir)
+		return filepath.Join(root, gdshcmd.CommandsDir)
 	}
 	return ""
 }
 
 func gdshTarget(args []string, stdout io.Writer) error {
 	if len(args) > 1 {
-		return usageError("target takes at most one value")
+		return gdshcmd.UsageError("target takes at most one value")
 	}
 	path := userLayer().bridgeFile()
 	if len(args) == 0 {
@@ -476,12 +255,12 @@ func gdshTarget(args []string, stdout io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(stdout, "%s: 'gdsh new' writes to %s and 'gdsh install' to %s (--project: <project>/%s)\n", target,
-			targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshPackagesDir), filepath.ToSlash(targetRoot(target, ".")))
+			targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshcmd.PackagesDir), filepath.ToSlash(targetRoot(target, ".")))
 		return nil
 	}
 	target := args[0]
 	if target != targetMcpSh && target != targetGdsh {
-		return usageError(fmt.Sprintf("target is %q or %q, not %q", targetMcpSh, targetGdsh, target))
+		return gdshcmd.UsageError(fmt.Sprintf("target is %q or %q, not %q", targetMcpSh, targetGdsh, target))
 	}
 	cfg, err := readBridgeConfig(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -492,7 +271,7 @@ func gdshTarget(args []string, stdout io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "Set %s to %s in %s: 'gdsh new' writes to %s and 'gdsh install' to %s\n",
-		targetKey, target, path, targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshPackagesDir))
+		targetKey, target, path, targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshcmd.PackagesDir))
 	return nil
 }
 
@@ -568,16 +347,4 @@ func (c *bridgeConfig) write(path string) error {
 	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
 
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
-}
-
-func sameDir(a, b string) bool {
-	if filepath.Clean(a) == filepath.Clean(b) {
-		return true
-	}
-	ia, errA := os.Stat(a)
-	ib, errB := os.Stat(b)
-	return errA == nil && errB == nil && os.SameFile(ia, ib)
-}
+func sameDir(a, b string) bool { return gdshcmd.SameDir(a, b) }

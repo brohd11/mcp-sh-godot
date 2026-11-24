@@ -35,78 +35,6 @@ func read(t *testing.T, path string) string {
 	return string(data)
 }
 
-func TestGdshNew(t *testing.T) {
-	gdshEnv(t)
-	commands := filepath.Join(os.Getenv("GDSH_HOME"), "commands")
-
-	out, errOut, code := gdsh(t, "new", "hello")
-	if code != 0 {
-		t.Fatalf("new: %d %s", code, errOut)
-	}
-	hello := filepath.Join(commands, "hello", "hello.gd")
-	src := read(t, hello)
-	for _, want := range []string{
-		`extends "res://addons/_lib/gdsh/src/core/command_base.gd"`,
-		`return "hello"`, "Usage: hello [ARG...]", `&"positional_count": "min:0"`, "func _execute(ctx:Context):",
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("command missing %q:\n%s", want, src)
-		}
-	}
-	// The user commands folder is read without config, so there is no `gdsh add` hint.
-	if !strings.Contains(out, "Created "+hello) || strings.Contains(out, "gdsh add") || !strings.Contains(out, "hello --help") {
-		t.Errorf("new output: %q", out)
-	}
-
-	if _, errOut, code = gdsh(t, "new", "hello"); code != 1 || !strings.Contains(errOut, "--force") {
-		t.Errorf("existing command: %d %q", code, errOut)
-	}
-	os.WriteFile(hello, []byte("edited"), 0o644)
-	if _, _, code = gdsh(t, "new", "hello", "--force"); code != 0 || read(t, hello) == "edited" {
-		t.Errorf("--force: %d", code)
-	}
-
-	for _, args := range [][]string{{"new"}, {"new", "a", "--bogus"}, {"new", "a", "--dir"}, {"new", "a", "--project", "--dir", "x"}} {
-		if _, _, code = gdsh(t, args...); code != 2 {
-			t.Errorf("%v: code %d, want usage 2", args, code)
-		}
-	}
-	if _, errOut, code = gdsh(t, "new", "bad/name"); code != 1 || !strings.Contains(errOut, "invalid command name") {
-		t.Errorf("bad name: %d %q", code, errOut)
-	}
-}
-
-func TestGdshNewSubcommands(t *testing.T) {
-	gdshEnv(t)
-	commands := filepath.Join(os.Getenv("GDSH_HOME"), "commands")
-
-	if _, errOut, code := gdsh(t, "new", "tools", "bake"); code != 0 {
-		t.Fatalf("new tools bake: %d %s", code, errOut)
-	}
-	parent := filepath.Join(commands, "tools", "tools.gd")
-	if src := read(t, parent); !strings.Contains(src, `return "tools"`) || !strings.Contains(src, "Usage: tools <subcommand>") || strings.Contains(src, "_execute") {
-		t.Errorf("parent:\n%s", src)
-	}
-	if src := read(t, filepath.Join(commands, "tools", "bake", "bake.gd")); !strings.Contains(src, `return "bake"`) || !strings.Contains(src, "Usage: tools bake [ARG...]") {
-		t.Errorf("subcommand:\n%s", src)
-	}
-
-	// An existing parent is kept, even without --force.
-	os.WriteFile(parent, []byte("mine"), 0o644)
-	if out, errOut, code := gdsh(t, "new", "tools", "paint"); code != 0 || read(t, parent) != "mine" || strings.Contains(out, parent) {
-		t.Errorf("second subcommand: %d %q %q", code, out, errOut)
-	}
-
-	// A single-file command can't take subcommands until it has its own folder.
-	os.WriteFile(filepath.Join(commands, "loose.gd"), nil, 0o644)
-	if _, errOut, code := gdsh(t, "new", "loose", "sub"); code != 1 || !strings.Contains(errOut, "single-file command") {
-		t.Errorf("loose parent: %d %q", code, errOut)
-	}
-	if _, err := os.Stat(filepath.Join(commands, "loose")); err == nil {
-		t.Error("a refused new left files behind")
-	}
-}
-
 func TestGdshNewFolders(t *testing.T) {
 	gdshEnv(t)
 	if _, errOut, code := gdsh(t, "new", "x", "--project"); code != 1 || !strings.Contains(errOut, "project.godot") {
@@ -131,7 +59,7 @@ func TestGdshNewFolders(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(lib, "y", "y.gd")); err != nil {
 		t.Error(err)
 	}
-	if !strings.Contains(out, "mcp_sh_godot gdsh add "+lib) {
+	if !strings.Contains(out, "mcp_sh_godot gdsh add "+lib) || !strings.Contains(out, "'y --help' through mcp_sh_godot") {
 		t.Errorf("--dir output: %q", out)
 	}
 	gdsh(t, "add", "lib")

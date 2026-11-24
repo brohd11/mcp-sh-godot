@@ -62,72 +62,14 @@ func fakeIndex(t *testing.T) {
 	t.Cleanup(func() { pkgClient = saved })
 }
 
-func TestGdshPackages(t *testing.T) {
-	gdshEnv(t)
-	fakeIndex(t)
-	packages := filepath.Join(os.Getenv("GDSH_HOME"), "packages")
-
-	out, errOut, code := gdsh(t, "search", "3d")
-	if code != 0 || !strings.Contains(out, "terrain3d") || !strings.Contains(out, "needs level") || strings.Contains(out, "utils") {
-		t.Fatalf("search: %d %q %q", code, out, errOut)
-	}
-	if out, _, _ = gdsh(t, "search"); !strings.Contains(out, "project only: gdaddon install o/utils") {
-		t.Errorf("search all: %q", out)
-	}
-
-	out, errOut, code = gdsh(t, "install", "terrain3d")
-	if code != 0 || !strings.Contains(out, "level is needed by terrain3d") || !strings.Contains(out, "Installed terrain3d v0.1.0") ||
-		!strings.Contains(out, "lists them on its next request") {
-		t.Fatalf("install: %d %q %q", code, out, errOut)
-	}
-	for _, p := range []string{"level/cmd/level/level.gd", "terrain3d/package.cfg"} {
-		if _, err := os.Stat(filepath.Join(packages, p)); err != nil {
-			t.Error(err)
-		}
-	}
-	if out, _, _ = gdsh(t, "install", "level"); !strings.Contains(out, "level 0.1.0 is already installed") {
-		t.Errorf("reinstall: %q", out)
-	}
-	if out, _, _ = gdsh(t, "packages"); !strings.Contains(out, "level") || !strings.Contains(out, "terrain3d") || strings.Contains(out, "update:") {
-		t.Errorf("packages: %q", out)
-	}
-	if out, _, _ = gdsh(t, "update"); !strings.Contains(out, "pinned version") {
-		t.Errorf("update with nothing outdated: %q", out)
-	}
-
-	// An older level shows as outdated and updates.
-	os.WriteFile(filepath.Join(packages, "level", "package.cfg"), []byte("[package]\nversion=\"0.0.9\"\npath=\"x/level\"\n"), 0o644)
-	if out, _, _ = gdsh(t, "packages"); !strings.Contains(out, "(update: v0.1.0)") {
-		t.Errorf("outdated: %q", out)
-	}
-	if out, _, _ = gdsh(t, "update"); !strings.Contains(out, "Updated level v0.1.0") {
-		t.Errorf("update: %q", out)
-	}
-
-	if _, errOut, code = gdsh(t, "uninstall", "level"); code != 1 || !strings.Contains(errOut, "needed by terrain3d") {
-		t.Errorf("uninstall a dependency: %d %q", code, errOut)
-	}
-	if out, _, code = gdsh(t, "uninstall", "terrain3d"); code != 0 || !strings.Contains(out, "Removed terrain3d") {
-		t.Errorf("uninstall: %d %q", code, out)
-	}
-	if _, errOut, code = gdsh(t, "install", "utils"); code != 1 || !strings.Contains(errOut, "gdaddon install o/utils") {
-		t.Errorf("project-only: %d %q", code, errOut)
-	}
-	for _, args := range [][]string{{"install"}, {"uninstall"}, {"packages", "x"}, {"install", "level", "--bogus"}, {"install", "x", "--project", "--dir", "y"}} {
-		if _, _, code = gdsh(t, args...); code != 2 {
-			t.Errorf("%v: code %d, want usage 2", args, code)
-		}
-	}
-}
-
 func TestGdshPackagesRoots(t *testing.T) {
 	gdshEnv(t)
 	fakeIndex(t)
 	home := os.Getenv("GDSH_HOME")
 
 	// The default target is gdsh.
-	if _, errOut, code := gdsh(t, "install", "level"); code != 0 {
-		t.Fatalf("install into ~/.gdsh: %s", errOut)
+	if out, errOut, code := gdsh(t, "install", "level"); code != 0 || !strings.Contains(out, "lists them on its next request") {
+		t.Fatalf("install into ~/.gdsh: %q %s", out, errOut)
 	}
 	if _, err := os.Stat(filepath.Join(home, "packages", "level", "package.cfg")); err != nil {
 		t.Error(err)
