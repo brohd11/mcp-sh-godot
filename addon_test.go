@@ -78,10 +78,10 @@ func TestAddonInstall(t *testing.T) {
 	}
 }
 
-// The embedded addon is a release export: the libraries it needs are bundled under src/remote.
+// The embedded addon is a release export: the libraries it needs are bundled under vendor.
 func TestEmbeddedAddonIsSelfContained(t *testing.T) {
 	for _, lib := range []string{"gdsh", "mcp_sh_bridge", "gdsh_lib/editor", "gdsh_lib/tree", "gdsh_lib/utils"} {
-		if _, err := fs.Stat(addonFS, addonSrc+"/src/remote/addons/_lib/"+lib); err != nil {
+		if _, err := fs.Stat(addonFS, addonSrc+"/vendor/addons/_lib/"+lib); err != nil {
 			t.Errorf("embedded addon lacks %s: %v", lib, err)
 		}
 	}
