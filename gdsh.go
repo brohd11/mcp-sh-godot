@@ -27,7 +27,7 @@ const (
 	gdshSummary = "Write and install gdsh commands for the editor bridge, and manage the folders it reads them from"
 	gdshTail    = `The bridge reads these command roots without config: ~/.gdsh, res://.gdsh, ~/.mcp-sh/godot
 and res://.mcp-sh/godot. Each gives its commands/ folder and every packages/<name>/cmd; 'new'
-and 'install' use the user or project root 'target' picks. commandDirs come after their
+and 'package install' use the user or project root 'target' picks. commandDirs come after their
 layer's root. Folders outside res:// and in res://.gdsh or res://.mcp-sh are read on every
 request, so a new command is there without restarting the bridge, and edits apply on the next
 run.
@@ -72,7 +72,7 @@ func gdshHost() *gdshcmd.Host {
 		Note:    "(A bridge that read its folders only at startup lists a new command after a restart.)",
 		Extra: []gdshcmd.Verb{
 			{Names: []string{"target"}, Usage: []string{"target [mcp-sh|gdsh]"},
-				Help: `      Show or set the root 'new' and 'install' use (gdshRoot in
+				Help: `      Show or set the root 'new' and 'package install' use (gdshRoot in
       ~/.mcp-sh/godot/bridge.json):
         gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh (default).
                 Shared with the gdsh CLI and Editor Console.
@@ -254,7 +254,7 @@ func gdshTarget(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "%s: 'gdsh new' writes to %s and 'gdsh install' to %s (--project: <project>/%s)\n", target,
+		fmt.Fprintf(stdout, "%s: 'gdsh new' writes to %s and 'gdsh package install' to %s (--project: <project>/%s)\n", target,
 			targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshcmd.PackagesDir), filepath.ToSlash(targetRoot(target, ".")))
 		return nil
 	}
@@ -270,7 +270,7 @@ func gdshTarget(args []string, stdout io.Writer) error {
 	if err := cfg.write(path); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "Set %s to %s in %s: 'gdsh new' writes to %s and 'gdsh install' to %s\n",
+	fmt.Fprintf(stdout, "Set %s to %s in %s: 'gdsh new' writes to %s and 'gdsh package install' to %s\n",
 		targetKey, target, path, targetFolder(target, ""), filepath.Join(targetRoot(target, ""), gdshcmd.PackagesDir))
 	return nil
 }

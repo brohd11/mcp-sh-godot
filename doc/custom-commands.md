@@ -31,7 +31,7 @@ mcp_sh_godot gdsh dirs                    # what the bridge reads, in order
 ```
 
 `gdsh target` stores `gdshRoot` (`mcp-sh` or `gdsh`) in `~/.mcp-sh/godot/bridge.json`. It
-picks where `gdsh new` and `gdsh install` write. The default, `gdsh`, is shared by the gdsh
+picks where `gdsh new` and `gdsh package install` write. The default, `gdsh`, is shared by the gdsh
 CLI, Editor Console and the MCP bridge, so every prompt has the same commands. Pick `mcp-sh` to
 keep commands to the MCP bridge only.
 
@@ -42,11 +42,11 @@ Reviewed packages are listed in
 pinned to a reviewed commit, and installs download exactly that commit:
 
 ```sh
-mcp_sh_godot gdsh search                 # what's available, what each needs
-mcp_sh_godot gdsh install terrain3d      # and level, which it needs, beside it
-mcp_sh_godot gdsh packages               # installed, with newer pinned versions
-mcp_sh_godot gdsh update                 # every outdated package
-mcp_sh_godot gdsh uninstall terrain3d
+mcp_sh_godot gdsh package search                 # what's available, what each needs
+mcp_sh_godot gdsh package install terrain3d      # and level, which it needs, beside it
+mcp_sh_godot gdsh package list                   # installed, with newer pinned versions
+mcp_sh_godot gdsh package update                 # every outdated package
+mcp_sh_godot gdsh package uninstall terrain3d
 ```
 
 - Packages go in `<root>/packages/<name>`, and the bridge lists them on its next request.

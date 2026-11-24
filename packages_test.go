@@ -68,7 +68,7 @@ func TestGdshPackagesRoots(t *testing.T) {
 	home := os.Getenv("GDSH_HOME")
 
 	// The default target is gdsh.
-	if out, errOut, code := gdsh(t, "install", "level"); code != 0 || !strings.Contains(out, "lists them on its next request") {
+	if out, errOut, code := gdsh(t, "package", "install", "level"); code != 0 || !strings.Contains(out, "lists them on its next request") {
 		t.Fatalf("install into ~/.gdsh: %q %s", out, errOut)
 	}
 	if _, err := os.Stat(filepath.Join(home, "packages", "level", "package.cfg")); err != nil {
@@ -77,7 +77,7 @@ func TestGdshPackagesRoots(t *testing.T) {
 
 	project := newProject(t)
 	t.Chdir(project)
-	if _, errOut, code := gdsh(t, "install", "level", "--project"); code != 0 {
+	if _, errOut, code := gdsh(t, "package", "install", "level", "--project"); code != 0 {
 		t.Fatalf("install --project: %s", errOut)
 	}
 	if _, err := os.Stat(filepath.Join(project, ".gdsh", "packages", "level")); err != nil {
@@ -85,7 +85,7 @@ func TestGdshPackagesRoots(t *testing.T) {
 	}
 
 	gdsh(t, "target", "mcp-sh")
-	if _, errOut, code := gdsh(t, "install", "level", "--project"); code != 0 {
+	if _, errOut, code := gdsh(t, "package", "install", "level", "--project"); code != 0 {
 		t.Fatalf("install --project with mcp-sh target: %s", errOut)
 	}
 	if _, err := os.Stat(filepath.Join(project, ".mcp-sh", "godot", "packages", "level")); err != nil {
@@ -93,7 +93,7 @@ func TestGdshPackagesRoots(t *testing.T) {
 	}
 
 	// A root the bridge doesn't read gets the hint instead.
-	out, _, code := gdsh(t, "install", "level", "--dir", "elsewhere")
+	out, _, code := gdsh(t, "package", "install", "level", "--dir", "elsewhere")
 	if code != 0 || !strings.Contains(out, "doesn't read") {
 		t.Errorf("--dir: %d %q", code, out)
 	}
