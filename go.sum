@@ -1,7 +1,7 @@
 github.com/brohd11/gdsh-pkg v0.1.1 h1:/EinaZmP6ZwQGE1z59ZDNN6IBxAYBwVqNkMfj3xF/Gg=
 github.com/brohd11/gdsh-pkg v0.1.1/go.mod h1:uLNZjMeIHzv6E37q4qM/Q7/JSuFIXen1iQad9Ss8AFU=
-github.com/brohd11/godot-gdsh-cli v0.2.1 h1:ZvfpbKA508McNSGdbKJI2b6JyZ7eOHRZ4gLj3D3ft2Y=
-github.com/brohd11/godot-gdsh-cli v0.2.1/go.mod h1:ghI4+bZQOEbKunmuSHDThF1g5yA6Tn0c97sUMTmYR5M=
+github.com/brohd11/godot-gdsh-cli v0.3.1 h1:lSe9Aujs/vQE7b6GHXAcc9ztnMfmCB8GeEz3CO5XZ38=
+github.com/brohd11/godot-gdsh-cli v0.3.1/go.mod h1:ghI4+bZQOEbKunmuSHDThF1g5yA6Tn0c97sUMTmYR5M=
 github.com/brohd11/goutil v0.2.1 h1:prc6cRp24rjHLopQLW11MOe0CGPsQa88lLFUa3Y/bm4=
 github.com/brohd11/goutil v0.2.1/go.mod h1:CNwpa6c70oSgx4GeBgVpa3o38yOVfkBEtr0tqd1jRYs=
 github.com/brohd11/mcp-sh v0.1.5 h1:HmDO4rweMc2yeSqeU0Go+sw0W2Fe1LxgZw0Xfwj8TgM=
