@@ -5,6 +5,11 @@
 #   scripts/fetch_addon.sh             # latest release of brohd11/godot-mcp-sh-plugin
 #   scripts/fetch_addon.sh v0.2.0      # that tag
 #   scripts/fetch_addon.sh --zip FILE  # a local export zip (development only)
+#   scripts/fetch_addon.sh --check [TAG]  # only compare versions: exit 1 if the vendored
+#                                         # addon is not the latest release (or TAG)
+#
+# The fetch rewrites every .uid file; restore them by hand before committing. --check
+# downloads nothing and writes nothing, so CI can run it.
 #
 # Needs curl, jq and unzip. GITHUB_TOKEN (or GH_TOKEN) raises the API rate limit.
 set -eu
@@ -14,6 +19,13 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DEST="$ROOT/addon/mcp_sh_godot"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/mcp-sh-godot-addon.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
+
+check=0
+if [ "${1:-}" = "--check" ]; then
+	check=1
+	shift
+	[ "${1:-}" != "--zip" ] || { echo "usage: $0 --check [TAG]" >&2; exit 2; }
+fi
 
 if [ "${1:-}" = "--zip" ]; then
 	[ -n "${2:-}" ] || { echo "usage: $0 --zip FILE" >&2; exit 2; }
@@ -32,6 +44,15 @@ else
 		curl -fsSL "$api" > "$TMP/release.json"
 	fi
 	tag=$(jq -r '.tag_name' "$TMP/release.json")
+	if [ "$check" = 1 ]; then
+		have=$(sed -n 's/^version="\(.*\)"/\1/p' "$DEST/plugin.cfg")
+		if [ "v$have" = "$tag" ]; then
+			echo "addon/mcp_sh_godot is up to date ($tag)"
+			exit 0
+		fi
+		echo "addon/mcp_sh_godot is v$have but $REPO is at $tag -- run scripts/fetch_addon.sh, restore the .uid files, commit" >&2
+		exit 1
+	fi
 	url=$(jq -r '[.assets[] | select(.name | endswith(".zip"))][0].browser_download_url // empty' "$TMP/release.json")
 	[ -n "$url" ] || { echo "error: release $tag of $REPO has no zip asset" >&2; exit 1; }
 	zip="$TMP/addon.zip"

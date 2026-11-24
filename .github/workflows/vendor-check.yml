@@ -1,0 +1,16 @@
+name: vendor-check
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails when upstream has a newer release than the vendored copy. Fix it locally with
+      # the fetch script, then restore the .uid files by hand -- this job never rewrites anything.
+      - name: Vendored plugin matches the latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/fetch_addon.sh --check
