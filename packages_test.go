@@ -63,9 +63,9 @@ func fakeIndex(t *testing.T) {
 }
 
 func TestGdshPackages(t *testing.T) {
-	user := gdshEnv(t)
+	gdshEnv(t)
 	fakeIndex(t)
-	packages := filepath.Join(user, "packages")
+	packages := filepath.Join(os.Getenv("GDSH_HOME"), "packages")
 
 	out, errOut, code := gdsh(t, "search", "3d")
 	if code != 0 || !strings.Contains(out, "terrain3d") || !strings.Contains(out, "needs level") || strings.Contains(out, "utils") {
@@ -125,7 +125,7 @@ func TestGdshPackagesRoots(t *testing.T) {
 	fakeIndex(t)
 	home := os.Getenv("GDSH_HOME")
 
-	gdsh(t, "target", "gdsh")
+	// The default target is gdsh.
 	if _, errOut, code := gdsh(t, "install", "level"); code != 0 {
 		t.Fatalf("install into ~/.gdsh: %s", errOut)
 	}
@@ -139,6 +139,14 @@ func TestGdshPackagesRoots(t *testing.T) {
 		t.Fatalf("install --project: %s", errOut)
 	}
 	if _, err := os.Stat(filepath.Join(project, ".gdsh", "packages", "level")); err != nil {
+		t.Error(err)
+	}
+
+	gdsh(t, "target", "mcp-sh")
+	if _, errOut, code := gdsh(t, "install", "level", "--project"); code != 0 {
+		t.Fatalf("install --project with mcp-sh target: %s", errOut)
+	}
+	if _, err := os.Stat(filepath.Join(project, ".mcp-sh", "godot", "packages", "level")); err != nil {
 		t.Error(err)
 	}
 

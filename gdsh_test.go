@@ -36,8 +36,8 @@ func read(t *testing.T, path string) string {
 }
 
 func TestGdshNew(t *testing.T) {
-	user := gdshEnv(t)
-	commands := filepath.Join(user, "commands")
+	gdshEnv(t)
+	commands := filepath.Join(os.Getenv("GDSH_HOME"), "commands")
 
 	out, errOut, code := gdsh(t, "new", "hello")
 	if code != 0 {
@@ -77,7 +77,8 @@ func TestGdshNew(t *testing.T) {
 }
 
 func TestGdshNewSubcommands(t *testing.T) {
-	commands := filepath.Join(gdshEnv(t), "commands")
+	gdshEnv(t)
+	commands := filepath.Join(os.Getenv("GDSH_HOME"), "commands")
 
 	if _, errOut, code := gdsh(t, "new", "tools", "bake"); code != 0 {
 		t.Fatalf("new tools bake: %d %s", code, errOut)
@@ -117,7 +118,7 @@ func TestGdshNewFolders(t *testing.T) {
 	if _, errOut, code := gdsh(t, "new", "x", "--project"); code != 0 {
 		t.Fatalf("--project: %d %s", code, errOut)
 	}
-	if _, err := os.Stat(filepath.Join(project, ".mcp-sh", "godot", "commands", "x", "x.gd")); err != nil {
+	if _, err := os.Stat(filepath.Join(project, ".gdsh", "commands", "x", "x.gd")); err != nil {
 		t.Error(err)
 	}
 
@@ -210,34 +211,34 @@ func TestGdshTarget(t *testing.T) {
 	os.MkdirAll(user, 0o755)
 	os.WriteFile(bridge, []byte(`{"port": 9600}`), 0o644)
 
-	if out, _, code := gdsh(t, "target"); code != 0 || !strings.HasPrefix(out, "mcp-sh: ") || !strings.Contains(out, filepath.Join(user, "commands")) {
+	if out, _, code := gdsh(t, "target"); code != 0 || !strings.HasPrefix(out, "gdsh: ") || !strings.Contains(out, filepath.Join(home, "commands")) {
 		t.Errorf("default target: %d %q", code, out)
 	}
 	if _, _, code := gdsh(t, "target", "bogus"); code != 2 {
 		t.Errorf("bad target: code %d, want usage 2", code)
 	}
-	if out, errOut, code := gdsh(t, "target", "gdsh"); code != 0 || !strings.Contains(out, filepath.Join(home, "commands")) {
+	if out, errOut, code := gdsh(t, "target", "mcp-sh"); code != 0 || !strings.Contains(out, filepath.Join(user, "commands")) {
 		t.Fatalf("set target: %d %q %q", code, out, errOut)
 	}
 	cfg, _ := readBridgeConfig(bridge)
-	if string(cfg.raw["port"]) != "9600" || string(cfg.raw[targetKey]) != `"gdsh"` {
+	if string(cfg.raw["port"]) != "9600" || string(cfg.raw[targetKey]) != `"mcp-sh"` {
 		t.Errorf("target should be stored beside the other keys: %v", cfg.raw)
 	}
 
 	// gdsh new follows it, user and --project; a folder the bridge reads needs no `gdsh add`.
 	out, errOut, code := gdsh(t, "new", "hi")
 	if code != 0 || strings.Contains(out, "gdsh add") {
-		t.Fatalf("new with gdsh target: %d %q %q", code, out, errOut)
+		t.Fatalf("new with mcp-sh target: %d %q %q", code, out, errOut)
 	}
-	if _, err := os.Stat(filepath.Join(home, "commands", "hi", "hi.gd")); err != nil {
+	if _, err := os.Stat(filepath.Join(user, "commands", "hi", "hi.gd")); err != nil {
 		t.Error(err)
 	}
 	project := newProject(t)
 	t.Chdir(project)
 	if _, errOut, code := gdsh(t, "new", "hi", "--project"); code != 0 {
-		t.Fatalf("new --project with gdsh target: %d %s", code, errOut)
+		t.Fatalf("new --project with mcp-sh target: %d %s", code, errOut)
 	}
-	if _, err := os.Stat(filepath.Join(project, ".gdsh", "commands", "hi", "hi.gd")); err != nil {
+	if _, err := os.Stat(filepath.Join(project, ".mcp-sh", "godot", "commands", "hi", "hi.gd")); err != nil {
 		t.Error(err)
 	}
 

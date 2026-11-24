@@ -25,15 +25,15 @@ read only by `mcp_sh_godot gdsh` (new, install, ...), and only from the user fil
   "maxRequestBytes": 1048576,
   "maxConnections": 8,
   "idleTimeoutMs": 10000,
-  "gdshRoot": "mcp-sh"
+  "gdshRoot": "gdsh"
 }
 ```
 
 - `commandDirs` are gdsh command folders. `commands` maps a name to one command script.
   Relative paths are relative to the config file, and `~/` is the home folder.
-- `gdshRoot`: the command root `gdsh new` and `gdsh install` use. `mcp-sh` (default) is
-  `~/.mcp-sh/godot`, and `gdsh` is `~/.gdsh`, which Editor Console reads too. Set it with
-  `mcp_sh_godot gdsh target`.
+- `gdshRoot`: the command root `gdsh new` and `gdsh install` use. `gdsh` (default) is
+  `~/.gdsh`, which Editor Console reads too, and `mcp-sh` is `~/.mcp-sh/godot`, which only the
+  MCP bridge reads. Set it with `mcp_sh_godot gdsh target`.
 - `port` 0 is 9510 in the editor; -1 is any free port.
 - `maxRequestBytes` rejects oversized request lines with "Request too large".
   `maxConnections` caps active and waiting connections; excess connections close immediately.

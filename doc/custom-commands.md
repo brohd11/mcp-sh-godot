@@ -21,7 +21,7 @@ A command is `name.gd` or `name/name.gd`, with subcommands in folders beside it
 folders don't clash with its script commands.
 
 ```sh
-mcp_sh_godot gdsh target gdsh             # once: new commands go to ~/.gdsh (default: mcp-sh)
+mcp_sh_godot gdsh target mcp-sh           # optional: new commands go to ~/.mcp-sh/godot (default: gdsh)
 mcp_sh_godot gdsh new hello               # <user commands folder>/hello/hello.gd
 mcp_sh_godot gdsh new tools bake          # tools/bake/bake.gd, plus a tools/tools.gd parent
 mcp_sh_godot gdsh new hello --project     # <project>/.gdsh/commands/ or .mcp-sh/godot/commands/
@@ -31,8 +31,9 @@ mcp_sh_godot gdsh dirs                    # what the bridge reads, in order
 ```
 
 `gdsh target` stores `gdshRoot` (`mcp-sh` or `gdsh`) in `~/.mcp-sh/godot/bridge.json`. It
-picks where `gdsh new` and `gdsh install` write. Pick `gdsh` if you also use Editor Console,
-so its prompt has the same commands. Keep `mcp-sh` if you only use the agent.
+picks where `gdsh new` and `gdsh install` write. The default, `gdsh`, is shared by the gdsh
+CLI, Editor Console and the MCP bridge, so every prompt has the same commands. Pick `mcp-sh` to
+keep commands to the MCP bridge only.
 
 ## Command packages
 

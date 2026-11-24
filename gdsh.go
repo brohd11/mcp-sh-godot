@@ -50,10 +50,10 @@ const (
   mcp_sh_godot gdsh target [mcp-sh|gdsh]
       Show or set the root 'gdsh new' and 'gdsh install' use (gdshRoot in
       ~/.mcp-sh/godot/bridge.json):
-        mcp-sh  ~/.mcp-sh/godot, --project: .mcp-sh/godot (default).
+        gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh (default).
+                Shared with the gdsh CLI and Editor Console.
+        mcp-sh  ~/.mcp-sh/godot, --project: .mcp-sh/godot.
                 Only the MCP bridge reads it.
-        gdsh    ~/.gdsh ($GDSH_HOME), --project: .gdsh.
-                Editor Console reads it too.
   mcp_sh_godot gdsh add DIR [--project]
   mcp_sh_godot gdsh remove DIR [--project]
       Add or remove a folder of commands (a library) in bridge.json's commandDirs: the user
@@ -76,7 +76,7 @@ the gdsh copy it runs, so the same file works with the addon, Editor Console or 
 	targetKey     = "gdshRoot"
 	targetMcpSh   = "mcp-sh"
 	targetGdsh    = "gdsh"
-	targetDefault = targetMcpSh
+	targetDefault = targetGdsh
 )
 
 var gdshName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
