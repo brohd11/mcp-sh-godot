@@ -4,9 +4,9 @@ extends RefCounted
 ## because an export strips class_name from the libraries it bundles.
 
 
-const UtilsManifest = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/utils/cmd/manifest.gd")
-const TreeManifest = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/tree/cmd/manifest.gd")
-const EditorManifest = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh_lib/editor/cmd/manifest.gd")
+const UtilsManifest = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/utils/cmd/manifest.gd")
+const TreeManifest = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/tree/cmd/manifest.gd")
+const EditorManifest = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/manifest.gd")
 
 
 ## A GDSh.Host with `host_data` hooks for every request. `config` is a BridgeConfig: its
@@ -23,5 +23,5 @@ static func build(host_data:Dictionary, config):
 
 
 ### GDPackage Global Classes
-const GDSh_Host = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/gdsh/src/core/host.gd")
+const GDSh_Host = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/host.gd")
 

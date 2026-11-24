@@ -24,7 +24,7 @@ README. Use Project > Tools > Restart mcp-sh-godot Bridge after editing it.
 ## Development
 
 This repo is the plugin's source. Its export (`gdpackage export mcp_sh_godot`, or the release
-workflow on a `v*` tag) bundles the libraries under `src/remote/`. mcp-sh-godot vendors the
+workflow on a `v*` tag) bundles the libraries under `vendor/`. mcp-sh-godot vendors the
 released zip with `scripts/fetch_addon.sh`.
 
 ```sh

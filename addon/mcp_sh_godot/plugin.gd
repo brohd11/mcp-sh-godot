@@ -4,8 +4,8 @@ extends EditorPlugin
 ## needed with Editor Console, which serves its own (`mcp --start`), so it stays off while that
 ## runs. Its export bundles every library it uses.
 
-const Bridge = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/mcp_sh_bridge/src/bridge.gd")
-const BridgeConfig = preload("res://addons/mcp_sh_godot/src/remote/addons/_lib/mcp_sh_bridge/src/bridge_config.gd")
+const Bridge = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/mcp_sh_bridge/src/bridge.gd")
+const BridgeConfig = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/mcp_sh_bridge/src/bridge_config.gd")
 const Host = preload("res://addons/mcp_sh_godot/src/host.gd")
 const MENU_RESTART = "Restart mcp-sh-godot Bridge"
 const EDITOR_CONSOLE_CLASS = "EditorConsoleSingleton"
