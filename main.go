@@ -23,13 +23,14 @@ var version = "dev"
 
 func main() {
 	mcpsh.Main(mcpsh.Config{
-		Name:        "mcp_sh_godot",
-		App:         "godot",
-		Version:     version,
-		UpdateRepo:  "brohd11/mcp-sh-godot",
-		FS:          appFS,
-		Options:     profile.Options{ProjectMarkers: projectMarkers},
-		Subcommands: []mcpsh.Subcommand{addonCommand(version), gdshCommand()},
+		Name:          "mcp_sh_godot",
+		App:           "godot",
+		Version:       version,
+		VersionDetail: "plugin " + embeddedVersion(),
+		UpdateRepo:    "brohd11/mcp-sh-godot",
+		FS:            appFS,
+		Options:       profile.Options{ProjectMarkers: projectMarkers},
+		Subcommands:   []mcpsh.Subcommand{addonCommand(version), gdshCommand()},
 		// A running game serves its own bridge on 9511 (bridge.gd RUNTIME_PORT).
 		Registrations: []mcpsh.Registration{{
 			Suffix: "_game",
