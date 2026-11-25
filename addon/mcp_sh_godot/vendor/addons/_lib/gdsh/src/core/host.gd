@@ -206,13 +206,14 @@ func host_help(name:String) -> String:
 	return text
 
 
-#! keys timeout_ms:int max_output:int cancel_check:Callable
+#! keys timeout_ms:int max_output:int cancel_check:Callable host_name:String
 ## Run one offered command once its turn comes, waiting for async commands to finish.
 ## argv[0] is the command name; `stdin` is what it reads as piped input. Output is plain text
 ## (no BBCode). Returns {stdout, stderr, exit_code}.
 ## opts, all optional and off by default: timeout_ms counts from this call, so time spent queued
 ## counts too; max_output caps output bytes; cancel_check is polled at checkpoints and returns a
 ## reason to stop ("" to go on). Hitting any of them cancels the run (exit 124 or 130).
+## host_name sets $GDSH_HOST for this request (see CommandBase._host()), over the root's.
 func host_run(argv:Array, stdin:String = "", opts:Dictionary = {}) -> Dictionary:
 	var timeout_ms = int(opts.get("timeout_ms", 0))
 	var deadline = Time.get_ticks_msec() + timeout_ms if timeout_ms > 0 else 0
@@ -227,6 +228,9 @@ func host_run(argv:Array, stdin:String = "", opts:Dictionary = {}) -> Dictionary
 		if not cwd.is_empty(): root.cwd = cwd
 		if not cwn.is_empty(): root.cwn = cwn
 		var ctx = Context.new_ctx("Host request", root)
+		var host_name = str(opts.get("host_name", ""))
+		if not host_name.is_empty():
+			ctx.variables[Types.Host.VAR] = host_name
 		var token = ctx.cancel_token
 		token.deadline_ms = deadline
 		token.max_output = int(opts.get("max_output", 0))

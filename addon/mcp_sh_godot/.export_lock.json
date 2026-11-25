@@ -18,10 +18,22 @@
 			"package": "",
 			"path": "res://addons/_lib/gdsh",
 			"repo_id": "github.com/brohd11/godot-gdsh",
-			"sha": "a0ce17299c2adaa1ba7c75c1d9b48470a9a563b9",
+			"sha": "62a26fa5724e987dffc01d914993af8813025941",
 			"source": "remote",
-			"tag": "v0.5.3",
+			"tag": "v0.5.4",
 			"url": "https://github.com/brohd11/godot-gdsh",
+			"verify": false
+		},
+		{
+			"asset": "",
+			"kind": "source",
+			"package": "",
+			"path": "res://addons/_lib/gdsh_lib/data",
+			"repo_id": "github.com/brohd11/godot-gdsh-lib-data",
+			"sha": "3a63fb69ef3d20a26edd30ad84c048f9a371a46a",
+			"source": "remote",
+			"tag": "v0.2.0",
+			"url": "https://github.com/brohd11/godot-gdsh-lib-data",
 			"verify": false
 		},
 		{
@@ -90,9 +102,9 @@
 			"package": "",
 			"path": "res://addons/_lib/mcp_sh_bridge",
 			"repo_id": "github.com/brohd11/godot-mcp-sh-bridge",
-			"sha": "bbc44b907d00aa9b124e5c6460826800bc27feca",
+			"sha": "9f226c33ad84d0cd03a237d68586d2dcacf04543",
 			"source": "remote",
-			"tag": "v0.1.4",
+			"tag": "v0.1.6",
 			"url": "https://github.com/brohd11/godot-mcp-sh-bridge",
 			"verify": false
 		},
@@ -107,6 +119,18 @@
 			"tag": "v0.4.5",
 			"url": "https://github.com/brohd11/godot-util-r",
 			"verify": false
+		},
+		{
+			"asset": "",
+			"kind": "source",
+			"package": "addons/_lib/yaml_parser",
+			"path": "res://addons/_lib/yaml_parser",
+			"repo_id": "github.com/brohd11/godot-yaml-parser",
+			"sha": "59df70a811d0252c4e706ac7bf8f9ec70ac8d02c",
+			"source": "remote",
+			"tag": "v2.4.2",
+			"url": "https://github.com/brohd11/godot-yaml-parser",
+			"verify": false
 		}
 	],
 	"godot": "4.7-stable (official)",
@@ -116,9 +140,9 @@
 		"package": "",
 		"path": "res://addons/mcp_sh_godot",
 		"repo_id": "github.com/brohd11/godot-mcp-sh-plugin",
-		"sha": "e93691a77c5183e55701a3bca14b4fd29650a7e0",
+		"sha": "17153bb1806f0f187e65b9cd48373e91bd5b7c2d",
 		"source": "remote",
-		"tag": "v0.2.3",
+		"tag": "v0.2.4",
 		"url": "https://github.com/brohd11/godot-mcp-sh-plugin",
 		"verify": false
 	},

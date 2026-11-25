@@ -8,6 +8,13 @@ const RETURN_KEY = "__function_return__"
 enum ExitCode { OK, FAIL, ERR, TIMEOUT = 124, CANCELLED = 130 }
 enum FlagType { NONE, FILE, DIR, CLASS, USER_CLASS }
 
+## $GDSH_HOST values the bundled hosts set; any other string is a custom host.
+class Host:
+	const VAR = "$GDSH_HOST"
+	const EDITOR_CONSOLE = "editor_console"
+	const CLI = "cli"
+	const MCP = "mcp"
+
 class ScopeDataKeys:
 	const SCRIPT = &"script"
 

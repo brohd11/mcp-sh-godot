@@ -43,6 +43,7 @@ func restart(config = null) -> void:
 	_bridge = Bridge.new()
 	_bridge.name = "McpShGodotBridge"
 	_bridge.autostart = false
+	_bridge.server_label = "mcp-sh-godot " + _plugin_version()
 	_config.apply_to(_bridge)
 	_bridge.host = _get_host
 	add_child(_bridge)
@@ -51,6 +52,14 @@ func restart(config = null) -> void:
 		return
 	if not _config.sources.is_empty():
 		print("mcp-sh-godot bridge config: " + ", ".join(_config.sources))
+
+
+## This plugin's version, from the plugin.cfg beside this script.
+func _plugin_version() -> String:
+	var cfg = ConfigFile.new()
+	if cfg.load(get_script().resource_path.get_base_dir().path_join("res://addons/mcp_sh_godot/plugin.cfg")) != OK:
+		return "unknown"
+	return str(cfg.get_value("plugin", "version", "unknown"))
 
 
 func _stop() -> void:

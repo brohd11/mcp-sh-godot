@@ -5,8 +5,8 @@ serves the editor's commands on `127.0.0.1:9510` to the mcp-sh-godot agent shell
 bundles everything it uses, so a project needs nothing else:
 
 - [mcp_sh_bridge](https://github.com/brohd11/godot-mcp-sh-bridge), the listener;
-- [gdsh](https://github.com/brohd11/godot-gdsh) and gdsh_lib's `utils`, `tree`, `editor` and `test`
-  commands (`ls`, `cat`, `find`, `tree`, `editor`, `settings`, `resource`, `test`, ...). `gdtest` is
+- [gdsh](https://github.com/brohd11/godot-gdsh) and gdsh_lib's `utils`, `tree`, `editor`, `test` and
+  `data` commands (`ls`, `cat`, `find`, `tree`, `editor`, `settings`, `resource`, `test`, `data`, ...). `gdtest` is
   `test` under a name the agent shell's own `test` builtin doesn't hide.
 
 Install it with the binary, so the two match, then enable **mcp-sh-godot** in Project Settings >

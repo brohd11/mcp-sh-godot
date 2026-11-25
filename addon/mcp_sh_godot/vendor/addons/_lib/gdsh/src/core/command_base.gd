@@ -14,6 +14,8 @@ const _UNAMED = "UnamedCommand"
 
 const ExitCode = Types.ExitCode
 const FlagType = Types.FlagType
+## $GDSH_HOST names, for _host(): `if _host() == Host.CLI: return ExitCode.FAIL`.
+const Host = Types.Host
 
 static var _positional_arg_count_regex:RegEx
 
@@ -33,6 +35,10 @@ func _initialize(ctx:Context):
 	positional_arg_index = -1
 	payload_index = -1
 	_ctx_obj = ctx
+
+## The running host ($GDSH_HOST): a Host constant, a custom name, or "" when none set it.
+func _host() -> String:
+	return str(_ctx_obj.variables.get(Host.VAR, "")) if _ctx_obj != null else ""
 
 static func get_command_name() -> String:
 	return _UNAMED
