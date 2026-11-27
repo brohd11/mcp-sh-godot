@@ -1,4 +1,6 @@
-extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/data/src/config_command.gd"
+extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/command_base.gd"
+
+const ConfigData = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/data/src/config_data.gd")
 
 const _HELP = \
 "Write to a ConfigFile, creating it if missing: one key, or a section from stdin key=value lines
@@ -36,6 +38,10 @@ func _process_flag(flag:String):
 	elif flag == "--no-scan":
 		no_scan_flag = true
 
+func _get_completions(completion:Completion):
+	var keys = ConfigData.key_completions(self)
+	return keys if keys != null else super(completion)
+
 func _execute(ctx:Context):
 	var path = complete_path(positional_args[0])
 	var section = positional_args[1]
@@ -53,7 +59,7 @@ func _execute(ctx:Context):
 		ctx.append_error("File doesn't exist: " + path)
 		return ExitCode.FAIL
 	if not created:
-		var loaded = _load_cfg(path)
+		var loaded = ConfigData.load_cfg(self, path)
 		if loaded.has("error"):
 			ctx.append_error(loaded.error)
 			return ExitCode.FAIL

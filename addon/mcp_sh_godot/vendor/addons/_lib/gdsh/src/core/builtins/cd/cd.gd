@@ -22,6 +22,8 @@ static func get_completion_static(ctx:Context, pos_args:Array) -> Dictionary:
 	var rel_path = ""
 	if pos_args.size() > 0:
 		rel_path = pos_args[0]
+	if ctx.has_filesystem():
+		return PathCompletion.files(rel_path, ctx.cwd, rel_path, ctx, true)
 	return _completion_rel_path(ctx, rel_path)
 
 
@@ -32,6 +34,13 @@ func _execute(ctx:Context):
 static func execute_static(ctx:Context, pos_args:Array):
 	var current_cwd = ctx.cwd
 	var target = pos_args[0]
+	if ctx.has_filesystem():
+		var listing = ctx.list_directory(target)
+		if not listing.ok:
+			ctx.append_error(listing.message)
+			return ExitCode.ERR
+		ctx.propogate(Context.Propagate.PROPERTY, "cwd", listing.path)
+		return ExitCode.OK
 
 	target = _complete_path(target, ctx.cwd)
 

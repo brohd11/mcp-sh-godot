@@ -13,6 +13,8 @@ const ScriptRebase = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/util_
 ## copy's command_base.gd: the plain lib, or one bundled into a plugin. Any command whose direct
 ## base is another copy's command_base.gd (a plugin that ships gdsh) is rebuilt the same way.
 const _COMMAND_BASE_SUFFIX = "gdsh/src/core/command_base.gd"
+const _IN_BETWEEN = "it must extend \"res://addons/_lib/gdsh/src/core/command_base.gd\" directly; " \
+		+ "an in-between base can't be rebuilt (move shared code into a helper)"
 const PLUGINS_DIR = "res://addons/"
 
 ## Built user commands by path: [source hash, script or null, why it failed or ""].
@@ -22,7 +24,8 @@ static var _user_builds := {}
 ## User commands live outside res:// (~/.gdsh, ~/.mcp-sh/godot and other folders) or in the
 ## project's res://.gdsh/ or res://.mcp-sh/. They can't know where gdsh is installed, so
 ## they are compiled against this copy: write
-## `extends "res://addons/_lib/gdsh/src/core/command_base.gd"` and they run under any host. They extend command_base.gd directly, reach the library through its
+## `extends "res://addons/_lib/gdsh/src/core/command_base.gd"` and they run under any host. They extend command_base.gd directly
+## (an in-between base is refused; share code through helpers, or a second name through get_command_aliases), reach the library through its
 ## consts (Context, Options, Utils, ...) and don't override _init. They are rebuilt when the file
 ## changes, so edits apply without a restart.
 ## This copy's own files never are, even when it runs from outside res:// (the CLI).
@@ -30,17 +33,17 @@ static func is_user_path(path:String) -> bool:
 	if path.begins_with(_Anchor.root()):
 		return false
 	return not path.begins_with("res://") or path.begins_with("res://.gdsh/") or path.begins_with("res://.mcp-sh/") \
-		or _in_ignored_plugin_cmd(path)
+		or _in_plugin_cmd(path)
 
 
-## A released plugin's cmd/ may be .gdignore'd so the editor never parses it (its gdsh may be
-## absent); those commands are compiled against this copy, like ~/.gdsh ones.
-static func _in_ignored_plugin_cmd(path:String) -> bool:
+## A top-level plugin's cmd/ is built from disk against this copy, like ~/.gdsh, so it runs
+## whether or not the gdsh it names is installed. A release may still .gdignore it so the editor
+## never parses it; that doesn't change how it loads.
+static func _in_plugin_cmd(path:String) -> bool:
 	if not path.begins_with(PLUGINS_DIR):
 		return false
 	var parts = path.trim_prefix(PLUGINS_DIR).split("/")
-	return parts.size() > 2 and parts[1] == "cmd" \
-		and FileAccess.file_exists(PLUGINS_DIR.path_join(parts[0]).path_join("cmd/.gdignore"))
+	return parts.size() > 2 and parts[1] == "cmd"
 
 
 ## The shared user folder: $GDSH_HOME, else ~/.gdsh ("" without a home folder).
@@ -158,25 +161,59 @@ static func _build_user(path:String, swap_any := false) -> GDScript:
 	if not FileAccess.file_exists(path):
 		push_error("GDSh.Load: command not found: " + path)
 		return null
-	var source_hash = FileAccess.get_file_as_string(path).hash()
+	var source = FileAccess.get_file_as_string(path)
+	var source_hash = source.hash()
 	var built = _user_builds.get(path)
 	if built != null and built[0] == source_hash:
 		return built[1]
 	var error = ""
-	var script = ScriptRebase.build(path, CommandBase, "" if swap_any else _COMMAND_BASE_SUFFIX)
-	if script == null:
-		error = "\n".join(ScriptRebase.last_errors)
-		if error.is_empty():
-			error = "it failed to compile; the error is in Godot's Output"
+	var script:GDScript = null
+	# Only the file's own extends is swapped, so a chain works only on a host whose CommandBase it
+	# already ends at. Refuse it before compiling, so every host gives the same reason.
+	var target = _extends_target(source)
+	# An exporter may have rewritten the extends to a uid:// or relative path to a bundled copy.
+	if not swap_any and _resolve_extends(path, target).ends_with(_COMMAND_BASE_SUFFIX) \
+			and not target.ends_with(_COMMAND_BASE_SUFFIX):
+		swap_any = true
+	if not swap_any and target.ends_with(".gd") and not target.ends_with(_COMMAND_BASE_SUFFIX):
+		error = _IN_BETWEEN
 	else:
-		error = _check_command(script)
-		if error == "command must extend GDSh.CommandBase":
-			error = "it must extend \"res://addons/_lib/gdsh/src/core/command_base.gd\" directly"
+		script = ScriptRebase.build(path, CommandBase, "" if swap_any else _COMMAND_BASE_SUFFIX)
+		if script == null:
+			error = "\n".join(ScriptRebase.last_errors)
+			if error.is_empty():
+				error = "it failed to compile; the error is in Godot's Output"
+		else:
+			error = _check_command(script)
+			if error == "command must extend GDSh.CommandBase":
+				error = "it must extend \"res://addons/_lib/gdsh/src/core/command_base.gd\" directly"
+			elif error.is_empty() and script.get_base_script() != CommandBase: # e.g. a uid:// base
+				error = _IN_BETWEEN
 	if not error.is_empty():
 		push_error("GDSh.Load: cannot load command %s: %s" % [path, error])
 		script = null
 	_user_builds[path] = [source_hash, script, error]
 	return script
+
+
+## The path or name after a script's first `extends`, unquoted ("" without one).
+static func _extends_target(source:String) -> String:
+	var found = RegEx.create_from_string("(?m)^extends[ \\t]+(\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s#]+)").search(source)
+	if found == null:
+		return ""
+	var target = found.get_string(1)
+	return target.substr(1, target.length() - 2) if target[0] in ["\"", "'"] else target
+
+
+## target (from _extends_target) as an absolute path: uid:// mapped, relative joined to path's dir.
+## Unresolvable uids and class names come back unchanged.
+static func _resolve_extends(path:String, target:String) -> String:
+	if target.begins_with("uid://"):
+		var id = ResourceUID.text_to_id(target)
+		return ResourceUID.get_id_path(id) if ResourceUID.has_id(id) else target
+	if target.ends_with(".gd") and target.is_relative_path():
+		return path.get_base_dir().path_join(target).simplify_path()
+	return target
 
 
 ## Failed user commands under dir, as {path: reason}. Only files still there are listed; the
@@ -212,11 +249,11 @@ static func load_directory(path:String, child_directories_only:=false) -> Dictio
 		var script = load_command(candidate)
 		if script == null:
 			continue
-		var name = script.get_command_name()
-		if scopes.has(name):
-			push_error("GDSh.Load: duplicate command '%s', skipping %s" % [name, candidate])
-			continue
-		scopes[name] = {Types.ScopeDataKeys.SCRIPT: script}
+		for name in [script.get_command_name()] + Array(script.get_command_aliases()):
+			if scopes.has(name):
+				push_error("GDSh.Load: duplicate command '%s', skipping %s" % [name, candidate])
+				continue
+			scopes[name] = {Types.ScopeDataKeys.SCRIPT: script}
 	return scopes
 
 ## A command package keeps its commands in <path>/cmd/ (a manifest.gd plus command dirs), so

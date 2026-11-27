@@ -108,7 +108,8 @@ static func add_command_script_to_dict(command, dict:Dictionary):
 	if not data.has(&"get_command"):
 		data[&"get_command"] = func():
 			return Utils.get_loader().fresh(command).new()
-	dict[command.get_command_name()] = data
+	for name in [command.get_command_name()] + Array(command.get_command_aliases()):
+		dict[name] = data
 
 
 func show_variables():

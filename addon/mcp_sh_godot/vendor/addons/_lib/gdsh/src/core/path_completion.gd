@@ -5,9 +5,20 @@ const Options = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/c
 const Paths = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/paths.gd")
 
 
-static func files(path:String, cwd:String, raw_word:String="") -> Dictionary:
+static func files(path:String, cwd:String, raw_word:String="", ctx=null, directories_only:=false) -> Dictionary:
 	var options = Options.new()
 	var prefix = path.left(path.rfind("/") + 1)
+	if ctx != null and ctx.has_filesystem():
+		var listing = ctx.list_directory(prefix if not prefix.is_empty() else ".")
+		if not listing.ok:
+			return options.get_options()
+		if listing.path != "/":
+			add_path_option(options, "..", prefix, raw_word)
+		for entry in listing.entries:
+			if directories_only and entry.kind != "directory":
+				continue
+			add_path_option(options, entry.name, prefix, raw_word, "/" if entry.kind == "directory" else " ")
+		return options.get_options()
 	var target_dir = cwd if prefix.is_empty() else prefix if prefix.is_absolute_path() else cwd.path_join(prefix).simplify_path()
 	var dir = DirAccess.open(target_dir)
 	if dir == null:
@@ -15,6 +26,8 @@ static func files(path:String, cwd:String, raw_word:String="") -> Dictionary:
 	add_path_option(options, "..", prefix, raw_word)
 	for name in dir.get_directories():
 		add_path_option(options, name, prefix, raw_word)
+	if directories_only:
+		return options.get_options()
 	# ResourceLoader keeps original names for exported scripts; DirAccess adds plain files.
 	var names = {}
 	for entry in Paths.list_directory(target_dir):

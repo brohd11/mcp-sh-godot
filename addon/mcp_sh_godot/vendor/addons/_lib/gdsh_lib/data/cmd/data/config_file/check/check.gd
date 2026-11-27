@@ -1,4 +1,6 @@
-extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/data/src/config_command.gd"
+extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/command_base.gd"
+
+const ConfigData = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/data/src/config_data.gd")
 
 const _HELP = \
 "Check that ConfigFiles load: prints `ok: <file>` for each, or why it failed (with the line).
@@ -14,9 +16,6 @@ static func get_self_command_data():
 		&"allow_positional_paths": true,
 	})
 
-func _init() -> void:
-	_complete_keys = false
-
 func _execute(ctx:Context):
 	var inputs = positional_args if not positional_args.is_empty() else Array(ctx.stdin.split("\n", false))
 	if inputs.is_empty():
@@ -25,7 +24,7 @@ func _execute(ctx:Context):
 	var status = ExitCode.OK
 	for input in inputs:
 		var path = complete_path(input.strip_edges())
-		var loaded = _load_cfg(path)
+		var loaded = ConfigData.load_cfg(self, path)
 		if loaded.has("error"):
 			ctx.append_error(loaded.error)
 			status = ExitCode.FAIL

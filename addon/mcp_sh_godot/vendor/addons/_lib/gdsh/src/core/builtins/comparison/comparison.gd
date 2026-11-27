@@ -65,6 +65,9 @@ func _compare(left: String, op: String, right: String, ctx) -> bool:
 
 
 func _unary(op: String, operand: String, ctx) -> bool:
+	if ctx.has_filesystem() and op in ["-e", "-f", "-d"]:
+		var info = ctx.stat_path(operand)
+		return info.ok and (op == "-e" or info.kind == ("file" if op == "-f" else "directory"))
 	match op:
 		"-z": return operand == ""     # true if empty
 		"-n": return operand != ""     # true if non-empty

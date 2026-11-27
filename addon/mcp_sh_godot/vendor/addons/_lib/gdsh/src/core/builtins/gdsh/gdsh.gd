@@ -39,10 +39,18 @@ func _execute(ctx:Context):
 	if script_path.get_extension().to_lower() != "gdsh":
 		ctx.append_error("Not a .gdsh script: " + script_path)
 		return ExitCode.FAIL
-	if not FileAccess.file_exists(script_path):
-		ctx.append_error("File doesn't exist: " + script_path)
-		return ExitCode.FAIL
-	var file_as_string = FileAccess.get_file_as_string(script_path)
+	var file_as_string:String
+	if ctx.has_filesystem():
+		var read = ctx.read_file(script_path)
+		if not read.ok:
+			ctx.append_error(read.message)
+			return ExitCode.FAIL
+		file_as_string = read.text
+	else:
+		if not FileAccess.file_exists(script_path):
+			ctx.append_error("File doesn't exist: " + script_path)
+			return ExitCode.FAIL
+		file_as_string = FileAccess.get_file_as_string(script_path)
 
 	var sub_ctx = Context.new_ctx(script_path.get_file() + "-SubShell", ctx, true)
 	sub_ctx.set_positional_args(script_path, positional_args)

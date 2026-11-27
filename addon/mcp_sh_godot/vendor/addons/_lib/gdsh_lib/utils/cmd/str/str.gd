@@ -1,6 +1,6 @@
 extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/command_base.gd"
 ## Namespace for string ops. Children are the sibling `name/name.gd` dirs; str_util.gd and
-## match_base.gd are shared scripts, not commands.
+## match_util.gd are shared scripts, not commands.
 
 const _HELP = \
 "String ops on one text argument or on each stdin line.

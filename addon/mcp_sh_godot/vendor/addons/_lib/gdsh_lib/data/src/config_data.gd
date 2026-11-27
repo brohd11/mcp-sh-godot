@@ -1,8 +1,41 @@
 extends RefCounted
 ## ConfigFile helpers for `data config_file`: text and JSON views of a parsed file, and values
-## typed on the command line. Static and editor-free, so the gdsh CLI can bundle it.
+## typed on the command line. Static and editor-free, so the gdsh CLI can bundle it. The command
+## is duck-typed (each extends CommandBase itself), so this never preloads gdsh.
 
 const PARSE_PREFIX = "ConfigFile parse error at "
+
+
+## {cfg} or {error}, with Godot's parse error captured through the command's ErrorCapture.
+static func load_cfg(cmd, path:String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"error": "File doesn't exist: " + path}
+	var cfg = ConfigFile.new()
+	var captured = cmd.ErrorCapture.run(cfg.load.bind(path))
+	if captured.result != OK:
+		return {"error": load_error(path, captured.result, captured.errors)}
+	return {"cfg": cfg}
+
+
+## Sections for the second positional, the section's keys for the third; null elsewhere, so the
+## command falls back to its default (path) completion.
+static func key_completions(cmd):
+	var index:int = cmd.positional_arg_index
+	if index < 1 or index > 2:
+		return null
+	var path = cmd.complete_path(cmd.positional_args[0])
+	var cfg = ConfigFile.new()
+	# Not captured: a parse error should reach the Output panel while typing, not stop completion.
+	if not FileAccess.file_exists(path) or cfg.load(path) != OK:
+		return {}
+	var options = cmd.Options.new()
+	if index == 1:
+		for section in cfg.get_sections():
+			options.add_option(section)
+	elif cfg.has_section(cmd.positional_args[1]):
+		for key in cfg.get_section_keys(cmd.positional_args[1]):
+			options.add_option(key)
+	return options.get_options()
 
 
 ## Why ConfigFile.load failed: Godot's logged parse error ("path:line: reason") when it was

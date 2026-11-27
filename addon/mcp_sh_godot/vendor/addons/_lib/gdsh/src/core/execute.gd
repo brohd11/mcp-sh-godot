@@ -59,12 +59,21 @@ static func source_file(file_path:String, parent_ctx:Context=null):
 	if parent_ctx == null: parent_ctx = Context.new()
 	if not file_path.is_absolute_path():
 		file_path = parent_ctx.cwd.path_join(file_path).simplify_path()
-	var file = FileAccess.open(file_path, FileAccess.READ)
-	if file == null:
-		parent_ctx.append_error("Cannot open GDSh script: " + file_path)
-		_set_status(parent_ctx, Types.ExitCode.FAIL)
-		return parent_ctx
-	var text = file.get_as_text()
+	var text:String
+	if parent_ctx.has_filesystem():
+		var read = parent_ctx.read_file(file_path)
+		if not read.ok:
+			parent_ctx.append_error(read.message)
+			_set_status(parent_ctx, Types.ExitCode.FAIL)
+			return parent_ctx
+		text = read.text
+	else:
+		var file = FileAccess.open(file_path, FileAccess.READ)
+		if file == null:
+			parent_ctx.append_error("Cannot open GDSh script: " + file_path)
+			_set_status(parent_ctx, Types.ExitCode.FAIL)
+			return parent_ctx
+		text = file.get_as_text()
 	if not text.strip_edges(true, false).begins_with("#!gdsh"):
 		parent_ctx.append_error("Not a gdsh script: " + file_path)
 		_set_status(parent_ctx, Types.ExitCode.FAIL)
@@ -210,16 +219,28 @@ static func _prepare_redirections(redirs:Array, ctx:Context) -> Dictionary:
 		var path = target if discard or target.is_absolute_path() else ctx.cwd.path_join(target).simplify_path()
 		var route = {"discard": discard, "path": path, "file": null}
 		if not discard:
-			var mode = FileAccess.READ if redirect.stdin else FileAccess.WRITE
-			if redirect.append and FileAccess.file_exists(path):
-				mode = FileAccess.READ_WRITE
-			route.file = FileAccess.open(path, mode)
-			if route.file == null:
-				ctx.append_error("GDSh redirection: cannot open '%s' (error %s)" % [path, FileAccess.get_open_error()])
-				result.ok = false
-				return result
-			if redirect.append:
-				route.file.seek_end()
+			if ctx.has_filesystem():
+				if not redirect.stdin:
+					ctx.append_error("GDSh redirection: filesystem is read-only: " + target)
+					result.ok = false
+					return result
+				var read = ctx.read_file(target)
+				if not read.ok:
+					ctx.append_error(read.message)
+					result.ok = false
+					return result
+				route["text"] = read.text
+			else:
+				var mode = FileAccess.READ if redirect.stdin else FileAccess.WRITE
+				if redirect.append and FileAccess.file_exists(path):
+					mode = FileAccess.READ_WRITE
+				route.file = FileAccess.open(path, mode)
+				if route.file == null:
+					ctx.append_error("GDSh redirection: cannot open '%s' (error %s)" % [path, FileAccess.get_open_error()])
+					result.ok = false
+					return result
+				if redirect.append:
+					route.file.seek_end()
 		result.routes.append(route)
 		var route_index = result.routes.size() - 1
 		if redirect.stdin: result.stdin_route = route_index
@@ -228,7 +249,7 @@ static func _prepare_redirections(redirs:Array, ctx:Context) -> Dictionary:
 	if result.stdin_route >= 0:
 		var input_route = result.routes[result.stdin_route]
 		if not input_route.discard:
-			result.stdin = input_route.file.get_as_text()
+			result.stdin = input_route.text if input_route.has("text") else input_route.file.get_as_text()
 	return result
 
 static func _write_redirect(route:Dictionary, content:String) -> String:

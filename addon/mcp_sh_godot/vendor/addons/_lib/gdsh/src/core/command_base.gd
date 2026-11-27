@@ -43,6 +43,11 @@ func _host() -> String:
 static func get_command_name() -> String:
 	return _UNAMED
 
+## Extra names this command is also listed under (e.g. one a shell builtin doesn't shadow).
+## Use it instead of a second script extending this one: user commands must extend CommandBase directly.
+static func get_command_aliases() -> PackedStringArray:
+	return PackedStringArray()
+
 func __get_name__():
 	var nm = get_command_name()
 	if nm == _UNAMED:
@@ -290,7 +295,7 @@ func _get_completion_std_w_context(completion:Completion, commands:=true, flags:
 				break
 
 	if allow_pos_paths and _do_path:
-		options.merge(PathCompletion.files(path, completion.context.cwd, completion.token_before_cursor))
+		options.merge(PathCompletion.files(path, completion.context.cwd, completion.token_before_cursor, completion.context))
 	else:
 		if _do_com and commands:
 			options.merge(get_commands(true))
@@ -487,6 +492,18 @@ func _get_flag_type_completions(completion:Completion):
 		return {}
 	var target_dir = flag_type_data.get("dir", "res://")
 	var completions = []
+	if completion.context.has_filesystem() and flag_type in [FlagType.FILE, FlagType.DIR]:
+		var virtual_root = flag_type_data.get("dir", "/")
+		var listing = completion.context.walk_directory(virtual_root)
+		var virtual_options = Options.new()
+		if listing.ok:
+			var extensions = flag_type_data.get("ext", [])
+			for entry in listing.entries:
+				if flag_type == FlagType.DIR and entry.kind == "directory" \
+						or flag_type == FlagType.FILE and entry.kind == "file" \
+						and (extensions.is_empty() or entry.path.get_extension() in extensions):
+					virtual_options.add_option(entry.path)
+		return virtual_options.get_options()
 	if flag_type == FlagType.FILE:
 
 		var extensions = flag_type_data.get("ext", [])
@@ -528,6 +545,8 @@ func _get_flag_type_completions(completion:Completion):
 
 
 static func _completion_rel_path(ctx:Context, current_rel_path:String):
+	if ctx.has_filesystem():
+		return PathCompletion.files(current_rel_path, ctx.cwd, current_rel_path, ctx, true)
 	var target_dir = ctx.cwd
 	# Keep the user's prefix for insertion; only resolve it for directory lookup.
 	var insert_base = current_rel_path.left(current_rel_path.rfind("/") + 1)

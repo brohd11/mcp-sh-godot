@@ -15,6 +15,10 @@ var all_flag := false
 static func get_command_name():
 	return "test"
 
+## A name shell builtins don't shadow (the MCP sandbox shell's own `test` hides this one).
+static func get_command_aliases() -> PackedStringArray:
+	return PackedStringArray(["gdtest"])
+
 static func get_self_command_data():
 	return _command_data({
 		&"discoverable": false,

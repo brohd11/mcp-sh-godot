@@ -11,11 +11,13 @@ const RESOURCE = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/
 ## preload keeps working wherever the library lands.
 const NAMESPACES = [EDITOR, SETTINGS, RESOURCE]
 
+## `settings plugin` load()s its interactive list at runtime (so the CLI bundle, which ships
+## cmd/settings without this manifest, skips the TUI library); this preload ships it for hosts.
+const PLUGIN_TUI = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/src/plugin_tui.gd")
+
 const COMMANDS = [
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/open/open.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/play/play.gd"),
-	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/plugin/enable/enable.gd"),
-	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/plugin/plugin.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/redo/redo.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/restart/restart.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/editor/reveal/reveal.gd"),
@@ -40,6 +42,7 @@ const COMMANDS = [
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/resource/uid/uid.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/settings/esetting/esetting.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/settings/mainscene/mainscene.gd"),
+	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/settings/plugin/plugin.gd"),
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/editor/cmd/settings/psetting/psetting.gd"),
 ]
 

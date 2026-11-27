@@ -1,6 +1,7 @@
-extends "res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh/src/core/command_base.gd"
-## Shared body of `data to_json|to_yaml|to_bin`; a subclass sets `format` (and to_bin its extension).
-## Lives in src/, so command dirs never list it.
+extends RefCounted
+## Shared body of `data to_json|to_yaml|to_bin`. Each command extends CommandBase itself (a user
+## command can't share a base) and forwards its flags and _execute here. The command is
+## duck-typed, so this never preloads gdsh and works against whichever copy runs it.
 
 const DataConvert = preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/data/src/data_convert.gd")
 
@@ -15,16 +16,22 @@ var overwrite_flag := false
 var no_scan_flag := false
 var from_bin_flag := false
 
-## A subcommand's get_self_command_data().
-static func _convert_command_data(help:String) -> Dictionary:
-	return _command_data({
+
+func _init(output_format:String) -> void:
+	format = output_format
+
+
+## The params for a command's get_self_command_data().
+static func command_params(help:String) -> Dictionary:
+	return {
 		&"help": help,
 		&"positional_count": "max: 2",
 		&"allow_positional_paths": true,
-	})
+	}
 
-func _get_flags() -> Dictionary:
-	var options = Options.new()
+
+## Adds the shared flags to a command's Options.
+static func add_flags(options) -> void:
 	options.add_option("--overwrite", {
 		&"help": "Overwrite an existing output file."
 	})
@@ -34,9 +41,9 @@ func _get_flags() -> Dictionary:
 	options.add_option("--from-bin", {
 		&"help": "Read the input as Godot binary (root must be a Dictionary or Array)."
 	})
-	return options.get_options()
 
-func _process_flag(flag:String):
+
+func process_flag(flag:String) -> void:
 	if flag == "--overwrite":
 		overwrite_flag = true
 	elif flag == "--no-scan":
@@ -44,20 +51,22 @@ func _process_flag(flag:String):
 	elif flag == "--from-bin":
 		from_bin_flag = true
 
-func _execute(ctx:Context):
+
+func execute(cmd, ctx) -> int:
+	var args:Array = cmd.positional_args
 	var pairs = [] # [input, output]
-	if positional_args.size() == 2:
-		pairs.append([complete_path(positional_args[0]), complete_path(positional_args[1])])
+	if args.size() == 2:
+		pairs.append([cmd.complete_path(args[0]), cmd.complete_path(args[1])])
 	else:
-		var inputs = positional_args if positional_args.size() == 1 else Array(ctx.stdin.split("\n", false))
+		var inputs = args if args.size() == 1 else Array(ctx.stdin.split("\n", false))
 		if inputs.is_empty():
 			ctx.append_error("Need a data file path (argument or stdin).")
-			return ExitCode.ERR
+			return cmd.ExitCode.ERR
 		for path in inputs:
-			var input = complete_path(path.strip_edges())
+			var input = cmd.complete_path(path.strip_edges())
 			pairs.append([input, DataConvert.default_output(input, format, bin_ext)])
 
-	var status = ExitCode.OK
+	var status = cmd.ExitCode.OK
 	var wrote = false
 	for pair in pairs:
 		var problem = _convert(pair[0], pair[1])
@@ -66,10 +75,11 @@ func _execute(ctx:Context):
 			ctx.append_output("File converted: %s -> %s" % [pair[0], pair[1].get_file()])
 		else:
 			ctx.append_error(problem)
-			status = ExitCode.FAIL
+			status = cmd.ExitCode.FAIL
 	if wrote and not no_scan_flag and Engine.is_editor_hint():
 		EditorInterface.get_resource_filesystem().scan()
 	return status
+
 
 ## An error message, or "" once `output` is written.
 func _convert(input:String, output:String) -> String:

@@ -114,7 +114,7 @@ func get_completions() -> Dictionary:
 
 func _relative_path_completions(path:String) -> Dictionary:
 	var options = Options.new()
-	options.set_options(PathCompletion.files(path, context.cwd, token_before_cursor))
+	options.set_options(PathCompletion.files(path, context.cwd, token_before_cursor, context))
 	if context._bare_scope("node") != null:
 		var nodes = NodePaths.complete_path(path, context.cwn, token_before_cursor)
 		nodes.erase(Options.Keys.COMMAND_META)
@@ -203,6 +203,11 @@ func _redirect_completions() -> Dictionary:
 	if not _redirect_word.is_empty():
 		target = Expansion.scalar([_redirect_word], context, true)
 	if target in ["discard", "/dev/null"]:
+		return options.get_options()
+	if context.has_filesystem():
+		# Provider output is read-only; only the discard sinks are valid write targets.
+		if _redirect_op == "<":
+			options.merge(PathCompletion.files(target, context.cwd, _redirect_word.get("raw", ""), context))
 		return options.get_options()
 	var target_dir = context.cwd
 	var insert_base = ""

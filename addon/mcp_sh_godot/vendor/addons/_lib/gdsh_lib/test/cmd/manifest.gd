@@ -5,6 +5,5 @@ extends RefCounted
 
 const COMMANDS = [
 	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/test/cmd/test/test.gd"),
-	preload("res://addons/mcp_sh_godot/vendor/addons/_lib/gdsh_lib/test/cmd/gdtest/gdtest.gd"),
 ]
 

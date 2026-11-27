@@ -18,7 +18,14 @@ static func get_self_command_data():
 
 func _execute(ctx:Context):
 	var path = _complete_path(positional_args[0], ctx.cwd)
-	if not FileAccess.file_exists(path):
+	if ctx.has_filesystem():
+		# Check access before consulting source_history: a denied attempt must not be cached.
+		var read = ctx.read_file(path)
+		if not read.ok:
+			ctx.append_error(read.message)
+			return ExitCode.FAIL
+		path = read.path
+	elif not FileAccess.file_exists(path):
 		ctx.exit_code = ExitCode.FAIL
 		ctx.append_error("File doesn't exist, cannot source: " + path)
 		return ctx.exit_code
